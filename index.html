@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>转转质检标准系统</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8'},accent:{50:'#f0fdf4',500:'#22c55e',600:'#16a34a'},danger:{50:'#fef2f2',500:'#ef4444',600:'#dc2626'},warn:{50:'#fffbeb',500:'#f59e0b',600:'#d97706'}}}}}
+</script>
+<style>
+  [x-cloak]{display:none!important}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#f0f2f5;color:#1f2937}
+
+  /* 侧边栏 */
+  .sidebar{background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);border-right:1px dashed rgba(255,255,255,.08)}
+  .sidebar-item{transition:all .15s;border-left:3px solid transparent;color:#94a3b8}
+  .sidebar-item:hover{background:rgba(255,255,255,.06);color:#e2e8f0}
+  .sidebar-item.active{background:rgba(59,130,246,.15);color:#60a5fa;border-left-color:#3b82f6}
+  .sidebar-icon{width:20px;text-align:center;flex-shrink:0}
+
+  /* 卡片 */
+  .card{background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.04);border:1px solid #e5e7eb}
+  .card-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px dashed #e5e7eb;font-weight:600;font-size:14px}
+  .card-dashed{border:1px dashed #cbd5e1}
+  .card-accent{border-left:3px dashed #3b82f6}
+  .dashed-divider{border:none;border-top:1px dashed #d1d5db;margin:16px 0}
+
+  /* 按钮 */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;white-space:nowrap}
+  .btn-primary{background:#2563eb;color:#fff}
+  .btn-primary:hover{background:#1d4ed8}
+  .btn-outline{background:#fff;color:#374151;border:1px solid #d1d5db}
+  .btn-outline:hover{background:#f9fafb;border-color:#9ca3af}
+  .btn-danger{background:#fff;color:#dc2626;border:1px solid #fecaca}
+  .btn-danger:hover{background:#fef2f2}
+  .btn-sm{padding:5px 10px;font-size:12px}
+
+  /* 标签 */
+  .tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+  .tag-red{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+  .tag-green{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0}
+  .tag-amber{background:#fffbeb;color:#d97706;border:1px solid #fde68a}
+  .tag-blue{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+  .tag-purple{background:#faf5ff;color:#7c3aed;border:1px solid #ddd6fe}
+  .tag-slate{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0}
+
+  /* 输入 */
+  .input{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;outline:none;transition:border-color .15s;background:#fff}
+  .input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+  .input-icon{padding-left:34px}
+
+  /* 品类标签 */
+  .cat-tab{display:inline-flex;align-items:center;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid #d1d5db;background:#fff;color:#6b7280}
+  .cat-tab:hover{border-color:#93c5fd;color:#2563eb;background:#eff6ff}
+  .cat-tab.active{background:#2563eb;color:#fff;border-color:#2563eb}
+
+  /* 表格 */
+  .data-table{width:100%;font-size:13px}
+  .data-table th{text-align:left;padding:10px 12px;background:#f8fafc;color:#64748b;font-weight:600;font-size:12px;border-bottom:2px solid #e5e7eb;white-space:nowrap}
+  .data-table td{padding:10px 12px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+  .data-table tr:hover td{background:#f8fafc}
+
+  /* 层级路径 */
+  .breadcrumb{display:flex;align-items:center;gap:4px;font-size:12px;color:#9ca3af;flex-wrap:wrap}
+  .breadcrumb span{color:#6b7280}
+  .breadcrumb-sep{color:#d1d5db}
+
+  /* 进度条 */
+  .progress-bar{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden}
+  .progress-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+  /* 统计卡片 */
+  .stat-card{text-align:center;padding:16px}
+  .stat-value{font-size:28px;font-weight:700;line-height:1.2}
+  .stat-label{font-size:12px;color:#9ca3af;margin-top:2px}
+
+  /* 动画 */
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .animate-in{animation:fadeIn .2s ease}
+
+  /* 拦截项列表 */
+  .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font-size:11px;font-weight:700;flex-shrink:0}
+  .rank-1{background:#fef2f2;color:#dc2626}
+  .rank-2{background:#fff7ed;color:#ea580c}
+  .rank-3{background:#fffbeb;color:#d97706}
+  .rank-other{background:#f1f5f9;color:#64748b}
+
+  /* 滚动条 */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:#9ca3af}
+
+  /* Toast */
+  .toast{position:fixed;top:20px;right:20px;z-index:9999;background:#1e293b;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;box-shadow:0 10px 25px rgba(0,0,0,.2);display:flex;align-items:center;gap:8px}
+</style>
+</head>
+<body>
+
+<div x-data="app()" x-cloak class="flex h-screen overflow-hidden">
+
+<!-- ==================== 左侧边栏 ==================== -->
+<aside class="sidebar w-56 flex-shrink-0 flex flex-col hidden md:flex">
+  <!-- Logo -->
+  <div class="px-5 py-4 border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-blue-500/25">转</div>
+      <div>
+        <p class="text-white font-semibold text-sm">质检标准系统</p>
+        <p class="text-slate-400 text-xs">转转 · 质量管理</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导航 -->
+  <nav class="flex-1 py-4 px-3 space-y-1">
+    <p class="px-3 text-xs text-slate-500 mb-2 font-medium tracking-wider">功能导航</p>
+    <button @click="switchView('standards')" :class="view==='standards'?'active':''"
+      class="sidebar-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-3">
+      <span class="sidebar-icon">📋</span> 标准查询
+    </button>
+    <button @click="switchView('intercept')" :class="view==='intercept'?'active':''"
+      class="sidebar-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-3">
+      <span class="sidebar-icon">🛡️</span> 发货拦截
+    </button>
+    <button @click="switchView('analysis')" :class="view==='analysis'?'active':''"
+      class="sidebar-item w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-3">
+      <span class="sidebar-icon">📊</span> 数据分析
+    </button>
+  </nav>
+
+  <!-- 底部信息 -->
+  <div class="px-4 py-3 border-t border-white/10">
+    <div class="flex items-center justify-between text-xs text-slate-500">
+      <span>拦截记录</span>
+      <span class="text-slate-300 font-semibold" x-text="interceptData.summary.total||0"></span>
+    </div>
+    <div class="flex items-center justify-between text-xs text-slate-500 mt-1">
+      <span>标准总数</span>
+      <span class="text-slate-300 font-semibold" x-text="(standards&&standards.total)||0"></span>
+    </div>
+    <div class="text-xs text-slate-600 mt-2" x-text="'更新: ' + lastUpdate"></div>
+  </div>
+</aside>
+
+<!-- ==================== 主内容区 ==================== -->
+<div class="flex-1 flex flex-col overflow-hidden">
+
+<!-- 顶部栏 -->
+<header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0" style="border-bottom-style:dashed">
+  <div class="flex items-center gap-4">
+    <!-- 移动端菜单 -->
+    <div class="md:hidden flex items-center gap-2">
+      <div class="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-700 rounded flex items-center justify-center text-white text-xs font-bold">转</div>
+      <span class="font-semibold text-sm">质检标准系统</span>
+    </div>
+    <span class="hidden md:inline text-sm text-gray-500">
+      当前: <span class="font-medium text-gray-700" x-text="view==='standards'?'标准查询':view==='intercept'?'发货拦截':'数据分析'"></span>
+    </span>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-xs text-gray-400 hidden sm:inline">数据更新: <span x-text="lastUpdate||'-'"></span></span>
+    <span class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">管</span>
+  </div>
+</header>
+
+<div class="dashed-divider" style="margin:0"></div>
+
+<!-- 滚动内容区 -->
+<main class="flex-1 overflow-y-auto p-4 md:p-6">
+
+<!-- Toast -->
+<div x-show="toast" x-transition @click="toast=''" class="toast cursor-pointer">
+  <span x-text="toast"></span><span class="text-slate-400 text-xs">×</span>
+</div>
+
+<!-- ================================================================ -->
+<!-- 📋 标准查询 -->
+<!-- ================================================================ -->
+<div x-show="view==='standards'" x-transition class="animate-in">
+
+  <!-- 品类选择 -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <span>📦 品类选择</span>
+      <span class="text-xs text-gray-400 font-normal" x-text="'已选: '+category.replace('相机-','相机 · ')"></span>
+    </div>
+    <div class="p-4">
+      <div class="flex gap-2 flex-wrap">
+        <template x-for="(cats,g) in categoryGroups" :key="g">
+          <template x-for="c in cats" :key="c">
+            <button @click="selectCategory(c)" x-text="c.replace('相机-','相机 · ')"
+              :class="category===c?'active':''"
+              class="cat-tab"></button>
+          </template>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <hr class="dashed-divider">
+
+  <!-- 搜索过滤 -->
+  <div class="card mb-4">
+    <div class="p-4">
+      <div class="flex gap-3 flex-wrap">
+        <div class="flex-1 min-w-[200px] relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+          <input x-model="search" @input.debounce.300ms="doSearch()" placeholder="搜索质检项、标准定义..."
+            class="input input-icon">
+        </div>
+        <select x-model="level1Filter" @change="doSearch()"
+          class="input w-auto min-w-[150px]">
+          <option value="">全部一级项</option>
+          <template x-for="l1 in level1List"><option :value="l1" x-text="l1"></option></template>
+        </select>
+        <span class="text-sm text-gray-400 self-center whitespace-nowrap">
+          共 <b class="text-gray-700" x-text="filteredCount"></b> 条
+          <span x-show="search||level1Filter" class="text-blue-500">（已筛选）</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 加载状态 -->
+  <div x-show="loading" class="card p-16 text-center">
+    <div class="w-10 h-10 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+    <p class="text-gray-400">正在加载标准数据...</p>
+  </div>
+
+  <!-- 标准列表 -->
+  <div x-show="!loading" class="space-y-3">
+    <template x-for="l1 in filteredGroups" :key="l1.name">
+      <div class="card overflow-hidden">
+        <!-- 一级项标题 -->
+        <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center gap-3">
+          <span class="w-1.5 h-5 bg-blue-500 rounded-full flex-shrink-0"></span>
+          <span class="font-bold text-sm text-gray-800" x-text="l1.name"></span>
+          <span class="tag tag-blue" x-text="l1.count+'项'"></span>
+          <span class="flex-1"></span>
+          <span class="text-xs text-gray-400" x-text="l1.filteredGroups.length+'个二级项'"></span>
+        </div>
+
+        <!-- 标准列表（卡片布局，兼容所有浏览器） -->
+        <div class="divide-y divide-gray-100">
+          <template x-for="l2 in l1.filteredGroups" :key="l2.name">
+            <div>
+              <!-- 二级项标题 -->
+              <div class="px-4 py-2.5 bg-gray-50/80 flex items-center gap-2 border-b border-gray-100">
+                <span class="w-4 h-0.5 bg-gray-300 rounded-full flex-shrink-0"></span>
+                <span class="text-xs font-semibold text-gray-600" x-text="l2.name"></span>
+                <span class="text-xs text-gray-400" x-text="'('+l2.items.length+'条)'"></span>
+              </div>
+              <!-- 三级项列表 -->
+              <template x-for="item in l2.items" :key="item._id">
+                <div class="px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50/30 transition-colors">
+                  <!-- 第一行：三级项名称 + 成色等级 -->
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="text-sm font-bold text-gray-800" x-text="item['_三级项']||'(未命名)'"></span>
+                    <span x-show="item['_成色']" x-text="item['_成色']"
+                      :class="(item['_成色']||'').includes('不进卖场')?'tag tag-red':(item['_成色']||'').match(/[\/,，、]/)?'tag tag-green':'tag tag-amber'"
+                      class="tag flex-shrink-0 text-xs"></span>
+                  </div>
+                  <!-- 第二行：适用品牌 + 聚合项 -->
+                  <div class="flex items-center gap-4 mb-2 flex-wrap">
+                    <div x-show="item['_适用品牌']" class="flex items-center gap-1.5 text-xs">
+                      <span class="text-gray-400">🏷️ 适用品牌：</span>
+                      <span class="text-gray-600 font-medium" x-text="item['_适用品牌']"></span>
+                    </div>
+                    <div x-show="item['_聚合项']" class="flex items-center gap-1.5 text-xs">
+                      <span class="text-gray-400">📎 聚合项：</span>
+                      <span class="text-gray-600 font-medium" x-text="item['_聚合项']"></span>
+                    </div>
+                  </div>
+                  <!-- 第三行：标准定义（完整展示） -->
+                  <div class="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-md p-2.5 border border-gray-100">
+                    <span class="text-gray-400 mr-1">📝</span>
+                    <span x-text="item['_标准定义']||'(暂无标准定义)'"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- 无结果 -->
+    <div x-show="filteredCount===0" class="card p-16 text-center">
+      <p class="text-4xl mb-3">🔍</p>
+      <p class="text-gray-500 font-medium">没有找到匹配的标准</p>
+      <p class="text-gray-400 text-sm mt-1">尝试更换搜索关键词或切换品类</p>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- 🛡️ 发货拦截 -->
+<!-- ================================================================ -->
+<div x-show="view==='intercept'" x-transition class="animate-in">
+
+  <!-- 数据状态指示器 -->
+  <div x-show="statusMsg" class="mb-3 px-4 py-2 bg-yellow-50 border border-yellow-300 rounded-lg text-sm text-yellow-800" x-text="statusMsg"></div>
+  <div x-show="!statusMsg && !(interceptData.records||[]).length" class="mb-3 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+    ℹ️ 数据为空 — 选择日期范围后点击「🔄 同步北斗数据」拉取拦截记录，或点击「加载示例」查看演示数据
+  </div>
+  <div x-show="!statusMsg && (interceptData.records||[]).length>0" class="mb-3 px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+    ✅ 已加载 <b x-text="(interceptData.records||[]).length"></b> 条记录，
+    <span x-text="warehouseStats.length||0"></span> 个仓库，
+    <span x-text="categoryStats.length||0"></span> 个品类，
+    <span x-text="merchantStats.length||0"></span> 个商家站点
+  </div>
+
+  <!-- 数据同步 -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <span>🛰️ 北斗数据同步</span>
+      <span class="tag tag-blue" x-text="(interceptData.records||[]).length+'条'"></span>
+    </div>
+    <div class="p-4">
+      <div class="flex gap-2 flex-wrap items-center">
+        <input type="date" x-model="syncDateStart" x-show="!isStatic" class="input text-sm" style="width:auto;padding:6px 10px" title="开始日期">
+        <span x-show="!isStatic" class="text-gray-400 text-xs">至</span>
+        <input type="date" x-model="syncDateEnd" x-show="!isStatic" class="input text-sm" style="width:auto;padding:6px 10px" title="截至日期">
+        <button @click="syncFromQuickBI()" x-show="!isStatic" :disabled="syncing" class="btn btn-outline btn-sm">
+          <span x-show="!syncing">🔄 同步北斗数据</span>
+          <span x-show="syncing" class="inline-flex items-center gap-1"><span class="animate-spin inline-block">⏳</span> 同步中…</span>
+        </button>
+        <span x-show="isStatic" class="text-xs text-gray-500">📦 静态站点 · 数据由管理员同步更新(最近更新: <b x-text="lastUpdate||'-'"></b>)</span>
+        <span x-show="(interceptData.records||[]).length>0" class="text-gray-300 mx-1">|</span>
+        <select x-model="filterWarehouse" x-show="(interceptData.records||[]).length>0" class="input text-xs" style="width:auto;padding:4px 8px">
+          <option value="">🏭 全部仓库</option>
+          <template x-for="w in warehouseStats" :key="w.name">
+            <option :value="w.name" x-text="w.name+' ('+w.total+')'"></option>
+          </template>
+        </select>
+        <select x-model="filterCategory" x-show="(interceptData.records||[]).length>0" class="input text-xs" style="width:auto;padding:4px 8px">
+          <option value="">📦 全部品类</option>
+          <template x-for="c in categoryStats" :key="c.name">
+            <option :value="c.name" x-text="c.name+' ('+c.total+')'"></option>
+          </template>
+        </select>
+        <select x-model="filterMerchant" x-show="(interceptData.records||[]).length>0" class="input text-xs" style="width:auto;padding:4px 8px">
+          <option value="">🏪 全部商家</option>
+          <template x-for="m in merchantStats" :key="m.name">
+            <option :value="m.name" x-text="m.name+' ('+m.total+')'"></option>
+          </template>
+        </select>
+        <button @click="filterWarehouse='';filterCategory='';filterMerchant=''" x-show="filterWarehouse||filterCategory||filterMerchant" class="text-xs text-blue-500 hover:underline">✕ 清除</button>
+        <span x-show="(interceptData.records||[]).length>0" class="text-xs text-gray-400" x-text="'匹配 '+filteredRecords.length+' 条'"></span>
+        <button @click="clearInterceptData()" class="btn btn-danger btn-sm" x-show="(interceptData.records||[]).length>0" style="margin-left:auto">清空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 统计卡片（跟随筛选） -->
+  <div x-show="(interceptData.records||[]).length>0" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+    <div class="card card-dashed stat-card">
+      <div class="stat-value text-gray-800" x-text="filterStats.total"></div>
+      <div class="stat-label">拦截总数</div>
+    </div>
+    <div class="card card-dashed stat-card">
+      <div class="stat-value text-red-500" x-text="filterStats.intercepted"></div>
+      <div class="stat-label">命中拦截</div>
+    </div>
+    <div class="card card-dashed stat-card">
+      <div class="stat-value text-green-500" x-text="filterStats.total-filterStats.intercepted"></div>
+      <div class="stat-label">放行</div>
+    </div>
+    <div class="card card-dashed stat-card">
+      <div class="stat-value text-blue-500" x-text="filterStats.uniqueItems"></div>
+      <div class="stat-label">拦截项种类</div>
+    </div>
+  </div>
+
+  <!-- 仓库 / 品类 / 商家 概览（跟随筛选） -->
+  <div x-show="(interceptData.records||[]).length>0" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+    <!-- 仓库分布 -->
+    <div class="card" style="padding:12px">
+      <div class="text-sm font-semibold text-gray-700 mb-2">🏭 仓库分布 <span class="text-xs text-gray-400 font-normal" x-text="'('+filterStats.warehouseStats.length+'个)'"></span></div>
+      <div class="space-y-1" style="max-height:160px;overflow-y:auto">
+        <template x-for="w in filterStats.warehouseStats.slice(0,8)" :key="w.name">
+          <div class="flex items-center text-xs">
+            <span class="flex-1 truncate text-gray-600" x-text="w.name" :title="w.name"></span>
+            <span class="text-gray-500 w-10 text-right" x-text="w.total"></span>
+            <div class="w-16 mx-1 bg-gray-100 rounded-full h-2 flex-shrink-0"><div class="bg-red-400 rounded-full h-2" :style="'width:'+w.rate+'%'"></div></div>
+            <span class="text-red-500 w-10 text-right" x-text="w.rate+'%'"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+    <!-- 品类分布 -->
+    <div class="card" style="padding:12px">
+      <div class="text-sm font-semibold text-gray-700 mb-2">📦 品类分布 <span class="text-xs text-gray-400 font-normal" x-text="'('+filterStats.categoryStats.length+'类)'"></span></div>
+      <div class="space-y-1" style="max-height:160px;overflow-y:auto">
+        <template x-for="c in filterStats.categoryStats.slice(0,8)" :key="c.name">
+          <div class="flex items-center text-xs">
+            <span class="flex-1 truncate text-gray-600" x-text="c.name"></span>
+            <span class="text-gray-500 w-10 text-right" x-text="c.total"></span>
+            <div class="w-16 mx-1 bg-gray-100 rounded-full h-2 flex-shrink-0"><div class="bg-orange-400 rounded-full h-2" :style="'width:'+c.rate+'%'"></div></div>
+            <span class="text-orange-500 w-10 text-right" x-text="c.rate+'%'"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+    <!-- 商家站点 -->
+    <div class="card" style="padding:12px">
+      <div class="text-sm font-semibold text-gray-700 mb-2">🏪 商家站点 <span class="text-xs text-gray-400 font-normal" x-text="'('+filterStats.merchantStats.length+'家)'"></span></div>
+      <div class="space-y-1" style="max-height:160px;overflow-y:auto">
+        <template x-for="m in filterStats.merchantStats.slice(0,8)" :key="m.name">
+          <div class="flex items-center text-xs">
+            <span class="flex-1 truncate text-gray-600" x-text="m.name" :title="m.name"></span>
+            <span class="text-gray-500 w-10 text-right" x-text="m.total"></span>
+            <div class="w-16 mx-1 bg-gray-100 rounded-full h-2 flex-shrink-0"><div class="bg-blue-400 rounded-full h-2" :style="'width:'+m.rate+'%'"></div></div>
+            <span class="text-blue-500 w-10 text-right" x-text="m.rate+'%'"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商户拦截排名（跟随筛选） -->
+  <div x-show="(interceptData.records||[]).length>0" class="card mb-4">
+    <div class="card-header">
+      <span>🏪 商户拦截排名</span>
+      <span class="text-xs text-gray-400 font-normal" x-text="filterStats.merchantStats.length+'家商户'"></span>
+    </div>
+    <div style="max-height:400px;overflow-y:auto">
+      <table class="data-table text-xs">
+        <thead>
+          <tr>
+            <th style="width:40px;position:sticky;top:0;background:#f8fafc;z-index:1">#</th>
+            <th style="position:sticky;top:0;background:#f8fafc;z-index:1">商户名称</th>
+            <th style="width:70px;position:sticky;top:0;background:#f8fafc;z-index:1" class="text-right">总数</th>
+            <th style="width:70px;position:sticky;top:0;background:#f8fafc;z-index:1" class="text-right">拦截数</th>
+            <th style="width:80px;position:sticky;top:0;background:#f8fafc;z-index:1" class="text-right">拦截率</th>
+            <th style="width:120px;position:sticky;top:0;background:#f8fafc;z-index:1">拦截率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(m,i) in [...filterStats.merchantStats].sort((a,b)=>b.intercepted-a.intercepted)" :key="m.name">
+            <tr>
+              <td class="text-center text-gray-400 font-mono" x-text="i+1"></td>
+              <td class="truncate max-w-[250px]" :title="m.name" x-text="m.name"></td>
+              <td class="text-right" x-text="m.total"></td>
+              <td class="text-right font-semibold" :class="m.intercepted>0?'text-red-500':''" x-text="m.intercepted"></td>
+              <td class="text-right font-semibold" :class="m.rate>=80?'text-red-500':m.rate>=50?'text-orange-500':'text-green-500'" x-text="m.rate+'%'"></td>
+              <td>
+                <div class="w-full bg-gray-100 rounded-full h-2">
+                  <div class="h-2 rounded-full" :class="m.rate>=80?'bg-red-400':m.rate>=50?'bg-orange-400':'bg-green-400'" :style="'width:'+m.rate+'%'"></div>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 原始数据明细表 — 始终显示 -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <span>📋 数据明细</span>
+      <span class="text-xs text-gray-400" x-text="filteredRecords.length>0?'共 '+filteredRecords.length+' 条'+(filterWarehouse||filterCategory||filterMerchant?' (已筛选)':''):'等待同步'"></span>
+    </div>
+    <!-- 空状态 -->
+    <div x-show="!filteredRecords.length" class="p-6 text-center text-gray-400">
+      <p class="text-sm" x-show="!(interceptData.records||[]).length">暂无数据</p>
+      <p class="text-sm" x-show="(interceptData.records||[]).length>0&&!filteredRecords.length">筛选无匹配结果</p>
+      <p class="text-xs mt-1" x-show="!(interceptData.records||[]).length">👆 选择日期范围后点击「🔄 同步北斗数据」获取拦截记录</p>
+    </div>
+    <!-- 数据表格 -->
+    <div x-show="filteredRecords.length>0" class="overflow-x-auto" style="max-height:500px;overflow-y:auto">
+      <table class="data-table text-xs">
+        <thead>
+          <tr>
+            <th style="min-width:110px;position:sticky;top:0;background:#f8fafc;z-index:1">质检码</th>
+            <th style="min-width:80px;position:sticky;top:0;background:#f8fafc;z-index:1">日期</th>
+            <th style="min-width:70px;position:sticky;top:0;background:#f8fafc;z-index:1">类型</th>
+            <th style="min-width:130px;position:sticky;top:0;background:#f8fafc;z-index:1">商家站点</th>
+            <th style="min-width:100px;position:sticky;top:0;background:#f8fafc;z-index:1">中心仓</th>
+            <th style="min-width:60px;position:sticky;top:0;background:#f8fafc;z-index:1">品类</th>
+            <th style="min-width:60px;position:sticky;top:0;background:#f8fafc;z-index:1">品牌</th>
+            <th style="min-width:80px;position:sticky;top:0;background:#f8fafc;z-index:1">机型</th>
+            <th style="min-width:50px;position:sticky;top:0;background:#f8fafc;z-index:1">拦截</th>
+            <th style="min-width:200px;position:sticky;top:0;background:#f8fafc;z-index:1">拦截项</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="(r,i) in filteredRecords.slice(0,500)" :key="r['质检码']||i">
+            <tr :class="(r['拦截']||'')==='是'?'bg-red-50':''">
+              <td class="font-mono text-gray-600" x-text="r['质检码']"></td>
+              <td x-text="r['日期']"></td>
+              <td x-text="r['类型']"></td>
+              <td class="text-gray-700" x-text="r['商家']"></td>
+              <td x-text="r['仓库']"></td>
+              <td><span class="tag tag-blue text-xs" x-text="r['品类']"></span></td>
+              <td x-text="r['品牌']"></td>
+              <td x-text="r['机型']"></td>
+              <td>
+                <span x-show="(r['拦截']||'')==='是'" class="tag tag-red text-xs">是</span>
+                <span x-show="(r['拦截']||'')!=='是'" class="tag tag-green text-xs">否</span>
+              </td>
+              <td class="text-xs text-gray-600 max-w-[250px] truncate" :title="r['拦截项']" x-text="r['拦截项']||'-'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+      <div x-show="filteredRecords.length>500" class="text-center text-xs text-gray-400 py-3 bg-gray-50">
+        仅显示前500条，共 <b x-text="filteredRecords.length"></b> 条记录
+      </div>
+    </div>
+  </div>
+
+  <!-- 标准匹配分析 -->
+  <div x-show="(interceptData.records||[]).length>0" class="card mb-4">
+    <div class="card-header">
+      <span>🔍 标准匹配分析</span>
+      <span x-show="matchResults.length>0" class="text-xs text-gray-400 font-normal">
+        匹配 <b class="text-green-600" x-text="matchResults.filter(r=>r.matched).length"></b> /
+        共 <b x-text="matchResults.length"></b> 项
+      </span>
+    </div>
+    <div class="p-4">
+      <p class="text-xs text-gray-400 mb-3">将拦截项自动匹配到质检标准。请先在「标准查询」页切换品类加载标准。</p>
+      <div class="flex gap-2 flex-wrap mb-4">
+        <button @click="runStandardMatch()" class="btn btn-primary">🚀 开始匹配</button>
+        <span x-show="matchLoading" class="text-sm text-blue-500 self-center flex items-center gap-1">
+          <span class="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></span> 匹配中...
+        </span>
+      </div>
+
+      <!-- 匹配结果表格 -->
+      <div x-show="matchResults.length>0" class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th>拦截项</th>
+              <th style="width:70px">次数</th>
+              <th>匹配标准路径</th>
+              <th>标准定义</th>
+              <th style="width:60px">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="(mr,i) in matchResults" :key="i">
+              <tr>
+                <td class="text-gray-400 text-xs" x-text="i+1"></td>
+                <td class="font-medium text-gray-800 text-sm" x-text="mr.item"></td>
+                <td><span class="tag tag-red font-semibold" x-text="mr.count+'次'"></span></td>
+                <td class="text-xs text-gray-500" x-text="mr.matchPath||'-'"></td>
+                <td class="text-xs text-gray-500" x-text="(mr.standardDef||'').slice(0,120)"></td>
+                <td>
+                  <span x-show="mr.matched" class="tag tag-green">✓ 已匹配</span>
+                  <span x-show="!mr.matched" class="tag tag-red">✗ 未匹配</span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 拦截项 TOP 排名（跟随筛选） -->
+  <div x-show="filterStats.topItems.length>0" class="card">
+    <div class="card-header">
+      <span>🏆 拦截项 TOP 排名</span>
+      <span class="text-xs text-gray-400 font-normal" x-show="filterWarehouse||filterCategory||filterMerchant">已按筛选统计</span>
+    </div>
+    <div class="p-4">
+      <div class="space-y-2">
+        <template x-for="(item,i) in filterStats.topItems" :key="item.item">
+          <div class="flex items-center gap-3 py-1.5">
+            <span class="rank-badge" :class="i===0?'rank-1':i<3?'rank-2':i<3?'rank-3':'rank-other'" x-text="i+1"></span>
+            <span class="flex-1 text-sm text-gray-700 truncate" x-text="item.item"></span>
+            <span class="tag tag-red font-semibold" x-text="item.count+'次'"></span>
+            <!-- 进度条 -->
+            <div class="progress-bar w-24 flex-shrink-0">
+              <div class="progress-fill bg-red-400" :style="'width:'+(item.count/filterStats.topItems[0].count*100)+'%'"></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ================================================================ -->
+<!-- 📊 数据分析 -->
+<!-- ================================================================ -->
+<div x-show="view==='analysis'" x-transition class="animate-in">
+
+  <!-- 标题栏 -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h2 class="font-bold text-gray-800 text-lg">拦截数据分析报告</h2>
+      <p class="text-sm text-gray-400 mt-0.5">基于拦截记录的实时统计分析</p>
+      <p class="text-sm text-blue-600 mt-0.5" x-show="filterWarehouse||filterCategory||filterMerchant"
+        x-text="'🔍 '+(filterWarehouse?'仓库='+filterWarehouse+'　':'')+(filterCategory?'品类='+filterCategory+'　':'')+(filterMerchant?'商家='+filterMerchant+'　':'')+'· 基于 '+filteredRecords.length+' 条数据分析'"></p>
+    </div>
+  </div>
+
+  <!-- 空状态 -->
+  <div x-show="!analysisData" class="card card-dashed p-16 text-center">
+    <p class="text-5xl mb-4">📊</p>
+    <p class="text-gray-500 font-medium mb-1">暂无分析数据</p>
+    <p class="text-gray-400 text-sm" x-show="!(interceptData.records||[]).length">请先在「发货拦截」页面导入数据，导入后将自动生成分析报告</p>
+    <p class="text-gray-400 text-sm" x-show="(interceptData.records||[]).length>0&&!filteredRecords.length">当前筛选条件下无数据，请调整筛选条件</p>
+    <p class="text-gray-400 text-sm" x-show="(interceptData.records||[]).length>0&&filteredRecords.length>0">正在自动生成报告…</p>
+  </div>
+
+  <!-- 分析报告内容 -->
+  <div x-if="analysisData" class="space-y-4 animate-in">
+
+    <!-- 概览卡片 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="card card-dashed stat-card">
+        <div class="stat-value text-gray-800" x-text="analysisData.summary.total"></div>
+        <div class="stat-label">检验总量</div>
+      </div>
+      <div class="card card-dashed stat-card">
+        <div class="stat-value text-red-500" x-text="analysisData.summary.intercepted"></div>
+        <div class="stat-label">实际拦截</div>
+      </div>
+      <div class="card card-dashed stat-card">
+        <div class="stat-value text-amber-500" x-text="analysisData.summary.rate+'%'"></div>
+        <div class="stat-label">拦截率</div>
+      </div>
+      <div class="card card-dashed stat-card">
+        <div class="stat-value text-blue-500" x-text="analysisData.summary.uniqueItems"></div>
+        <div class="stat-label">拦截项种类</div>
+      </div>
+    </div>
+
+    <hr class="dashed-divider">
+
+    <!-- 维度分布 + 高频项 (两列) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- 维度分布 -->
+      <div class="card">
+        <div class="card-header">
+          <span>📊 拦截维度分布</span>
+        </div>
+        <div class="p-4">
+          <div class="space-y-3">
+            <template x-for="d in analysisData.dimensions.slice(0,10)" :key="d.name">
+              <div>
+                <div class="flex items-center justify-between text-sm mb-1">
+                  <span class="text-gray-700 truncate" x-text="d.name"></span>
+                  <span class="text-xs font-semibold text-gray-500" x-text="d.count+' ('+d.pct+'%)'"></span>
+                </div>
+                <div class="progress-bar h-5 rounded-full">
+                  <div class="progress-fill h-full rounded-full flex items-center justify-end pr-2"
+                    :class="d.pct>30?'bg-red-400':d.pct>15?'bg-amber-400':d.pct>5?'bg-blue-400':'bg-gray-300'"
+                    :style="'width:'+Math.max(d.pct,2)+'%'"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- 高频拦截项 TOP15 -->
+      <div class="card">
+        <div class="card-header">
+          <span>🔝 高频拦截项 TOP15</span>
+        </div>
+        <div class="p-4">
+          <div class="space-y-2">
+            <template x-for="(item,i) in analysisData.topItems.slice(0,15)" :key="item.name">
+              <div class="flex items-center gap-2 text-sm">
+                <span class="rank-badge" :class="i===0?'rank-1':i<3?'rank-2':'rank-other'" x-text="i+1"></span>
+                <span class="flex-1 truncate text-gray-700" x-text="item.name"></span>
+                <span class="font-semibold text-red-500 flex-shrink-0" x-text="item.count"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="dashed-divider">
+
+    <!-- 品牌分析 -->
+    <div class="card card-accent">
+      <div class="card-header">
+        <span>🏷️ 品牌拦截分析</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>品牌</th>
+              <th class="text-right">拦截量</th>
+              <th>主要问题维度</th>
+              <th class="text-right">维修浸液占比</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="b in analysisData.brands.slice(0,12)" :key="b.name">
+              <tr>
+                <td class="font-medium" x-text="b.name"></td>
+                <td class="text-right font-bold" x-text="b.total"></td>
+                <td class="text-xs text-gray-500" x-text="b.topDims"></td>
+                <td class="text-right">
+                  <span class="font-semibold" :class="b.repairPct>50?'text-red-500':b.repairPct>30?'text-amber-500':'text-gray-500'"
+                    x-text="b.repairPct+'%'"></span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <hr class="dashed-divider">
+
+    <!-- ============ 竞品对标（动态：根据数据高亮相关维度） ============ -->
+    <div class="card border-t-4 border-t-blue-500" style="border-top-style:dashed">
+      <div class="card-header">
+        <span>🏭 竞品标准对标 · 数据关联分析</span>
+        <span class="text-xs text-blue-500 font-normal" x-text="'基于当前 '+analysisData.summary.total+' 条拦截数据'"></span>
+      </div>
+      <div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch">
+        <table class="data-table text-xs" style="min-width:900px">
+          <thead>
+            <tr>
+              <th style="min-width:120px">拦截维度</th>
+              <th style="min-width:60px" class="text-right">拦截量</th>
+              <th style="min-width:80px" class="text-right">占比</th>
+              <th style="min-width:160px">转转/找靓机 标准</th>
+              <th style="min-width:160px">行业竞品标准</th>
+              <th style="min-width:150px">国标/行标参考</th>
+              <th style="min-width:60px">差距</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="b in analysisData.benchmarks" :key="b.dim">
+              <tr :class="b.gap==='严重'?'bg-red-50':b.gap==='较大'?'bg-amber-50':''">
+                <td class="font-semibold text-gray-800" x-text="b.dim"></td>
+                <td class="text-right font-bold" :class="b.pct>=20?'text-red-500':b.pct>=10?'text-amber-500':'text-gray-600'" x-text="b.count"></td>
+                <td class="text-right"><span class="tag" :class="b.pct>=20?'tag-red':b.pct>=10?'tag-amber':'tag-blue'" x-text="b.pct+'%'"></span></td>
+                <td class="text-xs text-gray-600" x-text="b.ourStandard"></td>
+                <td class="text-xs text-gray-600" x-text="b.competitorStandard"></td>
+                <td class="text-xs text-gray-500" x-text="b.nationalStandard"></td>
+                <td><span class="tag text-xs" :class="b.gap==='严重'?'tag-red':b.gap==='较大'?'tag-amber':'tag-green'" x-text="b.gap"></span></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-4 py-2 bg-blue-50 text-xs text-blue-600 border-t border-blue-100">
+        📌 表格根据当前拦截数据的高频维度动态生成——不同附件（数据集）会产生不同的对标结果。竞品标准来源：T/TAF 173—2023、GB/T 45656-2025、各大平台公开信息。
+      </div>
+    </div>
+
+    <hr class="dashed-divider">
+
+    <!-- ============ 优化建议（动态生成） ============ -->
+    <div class="card border-l-4 border-l-amber-500" style="border-left-style:dashed">
+      <div class="card-header">
+        <span>💡 标准优化建议（根据当前数据动态生成）</span>
+        <span class="text-xs text-amber-500 font-normal" x-text="analysisData.recommendations.length+'条建议'"></span>
+      </div>
+      <div class="p-4 space-y-4">
+        <template x-for="(rec,i) in analysisData.recommendations" :key="i">
+          <div class="flex gap-3 p-4 rounded-lg border"
+            :class="rec.level==='critical'?'bg-red-50 border-red-200':rec.level==='high'?'bg-orange-50 border-orange-200':rec.level==='medium'?'bg-yellow-50 border-yellow-200':'bg-blue-50 border-blue-200'">
+            <span class="text-2xl flex-shrink-0" x-text="rec.icon"></span>
+            <div class="space-y-2 flex-1">
+              <p class="font-bold text-sm" :class="rec.level==='critical'?'text-red-700':rec.level==='high'?'text-orange-700':rec.level==='medium'?'text-yellow-700':'text-blue-700'" x-text="rec.title"></p>
+              <!-- 数据现状 -->
+              <p class="text-xs leading-relaxed" :class="rec.level==='critical'?'text-red-600':rec.level==='high'?'text-orange-600':rec.level==='medium'?'text-yellow-600':'text-blue-600'">
+                <b>📊 当前数据：</b><span x-text="rec.dataSummary"></span>
+              </p>
+              <!-- 竞品对比 -->
+              <p class="text-xs leading-relaxed" :class="rec.level==='critical'?'text-red-600':rec.level==='high'?'text-orange-600':rec.level==='medium'?'text-yellow-600':'text-blue-600'">
+                <b>🏭 竞品做法：</b><span x-text="rec.competitorPractice"></span>
+              </p>
+              <!-- 行业标准 -->
+              <p class="text-xs leading-relaxed" :class="rec.level==='critical'?'text-red-600':rec.level==='high'?'text-orange-600':rec.level==='medium'?'text-yellow-600':'text-blue-600'">
+                <b>📐 行业标准：</b><span x-text="rec.industryStandard"></span>
+              </p>
+              <!-- 具体建议 -->
+              <p class="text-xs leading-relaxed" :class="rec.level==='critical'?'text-red-600':rec.level==='high'?'text-orange-600':rec.level==='medium'?'text-yellow-600':'text-blue-600'">
+                <b>💡 优化建议：</b><span x-text="rec.action"></span>
+              </p>
+            </div>
+          </div>
+        </template>
+      </div>
+      <div class="px-4 py-3 bg-amber-50 border-t border-amber-200">
+        <div class="flex items-start gap-2 text-xs text-amber-700">
+          <span>📋</span>
+          <span x-text="analysisData.summaryNote||'以上建议基于当前拦截数据的高频维度自动生成，不同附件（数据集）会产生不同的分析结果。'"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+
+<!-- ==================== 移动端底部导航 ==================== -->
+<nav class="md:hidden bg-white border-t border-gray-200 flex flex-shrink-0">
+  <button @click="switchView('standards')" :class="view==='standards'?'text-blue-600 border-t-2 border-blue-600':'text-gray-400'"
+    class="flex-1 py-2 flex flex-col items-center text-xs gap-0.5 transition"><span class="text-lg">📋</span>标准</button>
+  <button @click="switchView('intercept')" :class="view==='intercept'?'text-blue-600 border-t-2 border-blue-600':'text-gray-400'"
+    class="flex-1 py-2 flex flex-col items-center text-xs gap-0.5 transition"><span class="text-lg">🛡️</span>拦截</button>
+  <button @click="switchView('analysis')" :class="view==='analysis'?'text-blue-600 border-t-2 border-blue-600':'text-gray-400'"
+    class="flex-1 py-2 flex flex-col items-center text-xs gap-0.5 transition"><span class="text-lg">📊</span>数据</button>
+</nav>
+
+</div><!-- end main area -->
+</div><!-- end x-data -->
+
+<!-- ============ Alpine.js 逻辑 ============ -->
+<script>
+function app(){return{
+  view:'standards',category:'手机',lastUpdate:'-',
+  allCategories:['手机','笔记本','平板','手表','耳机','相机-单反','相机-微单','相机-镜头'],
+  categoryGroups:{'':['手机','笔记本','平板','手表','耳机'],'相机':['相机-单反','相机-微单','相机-镜头']},
+  standards:null,loading:false,search:'',level1Filter:'',level1List:[],toast:'',
+  filteredGroups:[],filteredCount:0,
+  interceptData:{records:[],summary:{total:0},topItems:[]},syncDateStart:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncDateEnd:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncing:false,statusMsg:'',filterWarehouse:'',filterCategory:'',filterMerchant:'',
+  matchResults:[],matchLoading:false,
+  isStatic:false,analysisData:null,warehouseStats:[],categoryStats:[],merchantStats:[],filterStats:{warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0},
+
+  get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouse&&!this.filterCategory&&!this.filterMerchant)return r;return r.filter(x=>(!this.filterWarehouse||x['仓库']===this.filterWarehouse)&&(!this.filterCategory||x['品类']===this.filterCategory)&&(!this.filterMerchant||x['商家']===this.filterMerchant));},
+
+  // 基于当前筛选条件的统计（跟随筛选联动，筛选变化时重新计算一次）
+  updateFilterStats(){
+    const wh={},cats={},mer={};let intercepted=0;const itemMap={};
+    this.filteredRecords.forEach(r=>{
+      const w=r['仓库']||'未知';if(!wh[w])wh[w]={total:0,intercepted:0};wh[w].total++;if(r['拦截']==='是')wh[w].intercepted++;
+      const c=r['品类']||'未知';if(!cats[c])cats[c]={total:0,intercepted:0};cats[c].total++;if(r['拦截']==='是')cats[c].intercepted++;
+      const m=r['商家']||'未知';if(!mer[m])mer[m]={total:0,intercepted:0};mer[m].total++;if(r['拦截']==='是')mer[m].intercepted++;
+      if(r['拦截']==='是')intercepted++;
+      const it=(r['拦截项']||'').trim();if(it&&it!=='-')itemMap[it]=(itemMap[it]||0)+1;
+    });
+    const fmt=a=>Object.entries(a).sort((a,b)=>b[1].total-a[1].total).map(([name,d])=>({name,total:d.total,intercepted:d.intercepted,passed:d.total-d.intercepted,rate:Math.round(d.intercepted/d.total*100)}));
+    const topItems=Object.entries(itemMap).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([item,count])=>({item,count}));
+    this.filterStats={warehouseStats:fmt(wh),categoryStats:fmt(cats),merchantStats:fmt(mer),total:this.filteredRecords.length,intercepted,uniqueItems:Object.keys(itemMap).length,topItems};
+  },
+
+  // 筛选变化时自动重新计算统计并重新生成分析报告
+  onFilterChange(){
+    if(!(this.interceptData.records||[]).length)return;
+    this.updateFilterStats();
+    if(this.analysisData||this.filterWarehouse||this.filterCategory||this.filterMerchant)this.runAnalysis();
+  },
+
+  switchView(v){this.view=v;if(v==='analysis'&&(this.interceptData.records||[]).length&&!this.analysisData)this.runAnalysis();},
+  // 检测是否为纯静态部署(GitHub Pages等,无后端API):探测/api/interception是否可用
+  async detectStatic(){try{const r=await fetch('/api/interception');this.isStatic=!(r&&r.ok);}catch(e){this.isStatic=true;}if(this.isStatic)console.log('📦 静态部署模式:数据从 data/*.json 直读');},
+  async init(){this.$watch('filterWarehouse',()=>this.onFilterChange());this.$watch('filterCategory',()=>this.onFilterChange());this.$watch('filterMerchant',()=>this.onFilterChange());await this.detectStatic();await Promise.all([this.loadStandards(),this.loadInterceptData()]);},
+
+  async loadInterceptData(){try{const r=await fetch(this.isStatic?'data/interception.json':'/api/interception');if(r.ok)this.interceptData=await r.json();this.lastUpdate=this.interceptData.updated||'-';}catch(e){console.error('loadInterceptData:',e.message);this.statusMsg='⚠️ 加载拦截数据失败: '+e.message;}this.interceptData.summary=this.interceptData.summary||{total:0};this.interceptData.topItems=this.interceptData.topItems||[];this.interceptData.records=this.interceptData.records||[];this.computeWarehouseStats();this.updateFilterStats();},
+
+  async loadStandards(){this.loading=true;try{const url=this.isStatic?'data/standards-'+encodeURIComponent(this.category)+'.json':'/api/standards?category='+encodeURIComponent(this.category);const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);this.standards=await r.json();this.standards.flatItems.forEach((item,i)=>{item._id=this.category+'-'+i;const keys=Object.keys(item);item._三级项=item[keys.find(k=>k.includes('三级验机'))||'']||'';item._成色=item[keys.find(k=>k.includes('成色')&&k.includes('等级'))||'']||'';item._标准定义=item[keys.find(k=>k.includes('标准定义'))||'']||'';item._适用品牌=item[keys.find(k=>k.includes('适用')&&k.includes('品牌'))||'']||'';item._聚合项=item[keys.find(k=>k.includes('聚合'))||'']||'';});const seen=new Set();this.level1List=[];this.standards.groups.forEach(g=>{if(!seen.has(g.name)){seen.add(g.name);this.level1List.push(g.name);}});this.doSearch();}catch(e){this.toastMsg('加载失败: '+e.message);}this.loading=false;},
+  selectCategory(c){this.category=c;this.search='';this.level1Filter='';this.loadStandards();},
+
+  doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
+  highlight(text){if(!this.search||!text)return text;const re=new RegExp('('+this.search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return text.replace(re,'<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');},
+
+  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouse='';this.filterCategory='';this.filterMerchant='';if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
+  async syncFromQuickBI(){if(this.isStatic)return this.toastMsg('📦 当前为静态站点:数据由管理员同步更新,如需最新数据请联系管理员');this.syncing=true;const range=this.syncDateStart+' ~ '+this.syncDateEnd;this.toastMsg('正在同步 '+range+' 的拦截数据...');try{const r=await fetch('/api/fetch-interception?dateStart='+this.syncDateStart+'&dateEnd='+this.syncDateEnd);const result=await r.json();if(result.ok){await this.loadInterceptData();this.toastMsg('✅ 同步完成：'+result.data.summary.total+' 条记录');if(this.interceptData.records.length>0&&typeof this.runAnalysis==='function'){setTimeout(()=>this.runAnalysis(),500);}}else{this.toastMsg('❌ 同步失败: '+(result.error||'未知错误'));}}catch(e){this.toastMsg('❌ 请求失败: '+e.message);}this.syncing=false;},
+
+  async runStandardMatch(){
+    const records=this.filteredRecords;
+    if(!records.length)return this.toastMsg('当前筛选条件下无数据，请调整筛选');
+    this.matchLoading=true;this.matchResults=[];
+    const cats=new Set();
+    records.forEach(r=>{const c=r['品类']||'';if(c&&c!=='-')cats.add(c);});
+    if(cats.size===0)cats.add(this.category);
+    const allFlatItems=[];
+    const catMap={'手机':'手机','平板':'平板','笔记本':'笔记本','手表':'手表','耳机':'耳机','智能手表':'手表','笔记本配件':'笔记本'};
+    const loaded=new Set();
+    for(const rawCat of cats){
+      const mapped=catMap[rawCat]||rawCat;
+      if(loaded.has(mapped))continue;
+      loaded.add(mapped);
+      try{
+        const r=await fetch('/api/standards?category='+encodeURIComponent(mapped));
+        if(r.ok){
+          const data=await r.json();
+          data.flatItems.forEach(item=>{
+            const keys=Object.keys(item);
+            item._三级项=item[keys.find(k=>k.includes('三级验机'))||'']||'';
+            item._成色=item[keys.find(k=>k.includes('成色')&&k.includes('等级'))||'']||'';
+            item._标准定义=item[keys.find(k=>k.includes('标准定义'))||'']||'';
+            item._适用品牌=item[keys.find(k=>k.includes('适用')&&k.includes('品牌'))||'']||'';
+            item._聚合项=item[keys.find(k=>k.includes('聚合'))||'']||'';
+          });
+          allFlatItems.push(...data.flatItems);
+        }
+      }catch(e){}
+    }
+    if(allFlatItems.length===0){this.matchLoading=false;return this.toastMsg('未加载到标准数据，请先在标准查询页切换品类');}
+    const itemMap={};
+    records.forEach(r=>{
+      const item=(r['拦截项']||'').trim();
+      if(!item||item==='-')return;
+      itemMap[item]=(itemMap[item]||0)+1;
+    });
+    const results=[];
+    for(const [item,count] of Object.entries(itemMap)){
+      const keywords=item.split('/').map(s=>s.trim()).filter(s=>s.length>=2);
+      if(keywords.length===0){results.push({item,count,matched:false,standardDef:'',matchPath:'',score:0});continue;}
+      let bestMatch=null;let bestScore=0;
+      for(const std of allFlatItems){
+        const l3=std._三级项||'';const def=std._标准定义||'';
+        const l1=std['一级质检项']||'';const l2=std['二级验机项']||'';
+        const searchText=(l1+'/'+l2+'/'+l3+' '+def).toLowerCase();
+        let score=0;
+        for(const kw of keywords){
+          const kl=kw.toLowerCase();
+          if(kl.length>=2&&searchText.includes(kl))score+=kl.length*2;
+          if(kl.length>=2&&l3.toLowerCase().includes(kl))score+=8;
+          if(kl.length>=2&&l2.toLowerCase().includes(kl))score+=4;
+        }
+        if(score>bestScore){bestScore=score;bestMatch={path:l1+' → '+l2+' → '+l3,def:def||'(无标准定义)',score};}
+      }
+      results.push({item,count,matched:bestScore>=6,standardDef:(bestMatch&&bestMatch.def)||'',matchPath:(bestMatch&&bestMatch.path)||'',score:bestScore});
+    }
+    results.sort((a,b)=>b.count-a.count);
+    this.matchResults=results;
+    this.matchLoading=false;
+    this.toastMsg('匹配完成：'+results.filter(r=>r.matched).length+'/'+results.length+' 条命中');
+  },
+
+  // ===== 行业知识库（从服务端JSON动态加载，可热更新） =====
+  _industryKB: null,
+  _industryLoaded: false,
+
+  // 获取行业知识库（带缓存，仅首次加载或强制刷新时请求）
+  async _loadIndustryKB(force){
+    if(this._industryLoaded&&!force)return;
+    try{
+      const r=await fetch(this.isStatic?'data/industry-benchmarks.json':'/api/industry-benchmarks?t='+Date.now());
+      if(r.ok){this._industryKB=await r.json();this._industryLoaded=true;console.log('行业知识库已加载，更新日期：'+this._industryKB.updated);return;}
+    }catch(e){console.warn('行业知识库加载失败，使用内置默认数据',e);}
+    // Fallback: 使用内置最小知识库
+    if(!this._industryKB)this._industryKB=this._getFallbackKB();
+    this._industryLoaded=true;
+  },
+
+  // 内置 fallback（当服务端JSON不可用时）
+  _getFallbackKB(){
+    return {
+      updated:'内置默认',version:'fallback',
+      defaultGenerationRules:{benchmarkTopN:8,recommendationMax:6,brandThreshold:0.25,severityThresholds:{critical:25,high:15,medium:8},icons:['❶','❷','❸','❹','❺','❻','❼','❽']},
+      dimensions:{
+        '摄像头':{ourStandard:'直径≤5mm+数量≤3 单阈值判定',competitorPractice:'爱回收AI外观24μm精度+实拍样张最终判定；找靓机52项功能检测含多场景拍照',nationalStandard:'T/TAF 173-2023 §8.5：实拍成像质量+斑点数量+位置影响三维判定',gap:'较大',recommendation:'改为双区判定；增加实拍白墙测试',priority:'high'},
+        '屏幕显示':{ourStandard:'目视+菲林卡尺统一衡量',competitorPractice:'爱回收AI自动评分外观+设备检测；拍拍物理损伤+显示异常+原彩+烧屏判定',nationalStandard:'GB/T 45656-2025 A/B/C/D四级外观；ACC/MI/MA三级体系',gap:'较大',recommendation:'引入深度-长度-数量三参数量化卡；ACC级移除拦截仅标注',priority:'high'},
+        '外观':{ourStandard:'目视+塞规检测为主',competitorPractice:'爱回收AI外观自动评分（24μm）；回收宝天工验机AI线100+缺陷',nationalStandard:'GB/T 45656-2025 A/B/C/D四级外观',gap:'较大',recommendation:'引入AI辅助评分；高端/低端机差异化标准',priority:'medium'},
+        '电池充电':{ourStandard:'系统读数为主',competitorPractice:'找靓机120分钟耗电实测+30分钟游戏跑分；爱回收充放电+预测寿命',nationalStandard:'T/TAF 173 §8.10 电池效率缺陷等级分级',gap:'较大',recommendation:'增加实际耗电测试；电池健康度分级（≥85%/80-84%/<80%）',priority:'high'},
+        '维修浸液':{ourStandard:'一刀切拦截（Xray+人工）',competitorPractice:'爱回收Matrix 3.0三级分类；找靓机维修记录公示',nationalStandard:'GB/T 45656-2025 C级允许维修翻新记录',gap:'严重',recommendation:'建立三级分类：Ⅰ级降级不拦截/Ⅱ级降价+标注/Ⅲ级维持拦截',priority:'critical'},
+        '默认':{ourStandard:'依赖人工经验判定',competitorPractice:'行业头部平台普遍采用AI辅助+量化阈值+分级处理',nationalStandard:'GB/T 45656-2025 / T/TAF 173-2023',gap:'较大',recommendation:'从一刀切拦截转向分级分类处理',priority:'medium'}
+      }
+    };
+  },
+
+  _dimOverlap(a,b){
+    let overlap=0;const bSet=new Set(b);for(const c of a){if(bSet.has(c))overlap++;}return overlap>=2;
+  },
+
+  _matchKB(name){
+    const kb=this._industryKB;
+    if(!kb||!kb.dimensions)return this._getFallbackKB().dimensions['默认'];
+    const dims=kb.dimensions;
+    for(const k of Object.keys(dims)){if(k==='默认')continue;if(name.includes(k)||k.includes(name)||this._dimOverlap(name,k))return dims[k];}
+    return dims['默认']||{ourStandard:'依赖人工经验判定',competitorPractice:'行业头部平台采用AI辅助+量化阈值',nationalStandard:'GB/T 45656-2025',gap:'较大',recommendation:'建立量化标准',priority:'medium'};
+  },
+
+  _generateBenchmarks(dimensions){
+    const rules=(this._industryKB&&this._industryKB.defaultGenerationRules)||{benchmarkTopN:8};
+    return dimensions.slice(0,rules.benchmarkTopN||8).map(dim=>{
+      const kb=this._matchKB(dim.name);
+      return {dim:dim.name,count:dim.count,pct:dim.pct,ourStandard:kb.ourStandard||kb.our||'',competitorStandard:kb.competitorPractice||kb.competitor||'',nationalStandard:kb.nationalStandard||kb.national||'',gap:kb.gap||'未知'};
+    });
+  },
+
+  _generateRecommendations(dimensions,total,topBrands){
+    const rules=(this._industryKB&&this._industryKB.defaultGenerationRules)||{recommendationMax:6,brandThreshold:0.25,severityThresholds:{critical:25,high:15,medium:8},icons:['❶','❷','❸','❹','❺','❻','❼','❽']};
+    const recs=[],icons=rules.icons||['❶','❷','❸','❹','❺','❻','❼','❽'];
+    const th=rules.severityThresholds||{critical:25,high:15,medium:8};
+    const processed=new Set();
+    dimensions.forEach(dim=>{
+      if(recs.length>=(rules.recommendationMax||6))return;
+      const kb=this._matchKB(dim.name);
+      const key=dim.name;
+      if(processed.has(key))return;
+      processed.add(key);
+      const pct=dim.pct;
+      const level=pct>=th.critical?'critical':pct>=th.high?'high':pct>=th.medium?'medium':'normal';
+      let brandCtx='';
+      if(topBrands&&topBrands.length>=2)brandCtx='涉及品牌TOP2：'+topBrands.slice(0,2).map(b=>b.name+'（'+b.total+'次）').join('、')+'。';
+      const action=kb.recommendation||kb.action||'建立量化判定标准';
+      recs.push({
+        icon:icons[recs.length]||'📌',level,
+        title:'【'+dim.name+'】'+action.split('；')[0],
+        dataSummary:'当前“'+dim.name+'”维度拦截 '+dim.count+' 次，占总量 '+pct+'%。'+brandCtx+'我方标准：'+(kb.ourStandard||kb.our||'依赖人工经验判定')+'。',
+        competitorPractice:kb.competitorPractice||kb.competitor||'行业头部平台采用AI辅助+量化阈值',
+        industryStandard:kb.nationalStandard||kb.national||'GB/T 45656-2025',
+        action:action+'（本数据集此项占比'+pct+'%）'
+      });
+    });
+    if(topBrands&&topBrands.length>0&&topBrands[0].total>total*(rules.brandThreshold||0.25)&&recs.length<(rules.recommendationMax||6)){
+      const tb=topBrands[0];
+      recs.push({
+        icon:icons[recs.length]||'📌',level:'high',
+        title:'【品牌专项】'+tb.name+'集中度过高，建议建立专属标准通道',
+        dataSummary:tb.name+'单品牌拦截 '+tb.total+' 次，占比 '+Math.round(tb.total/total*100)+'%。高频维度：'+tb.topDims+'。',
+        competitorPractice:'爱回收对苹果设备单独配置检测参数（可GSX查询维修记录）；找靓机对华为Mate系列单独设置外观划痕容忍度。',
+        industryStandard:'GB/T 45656-2025 允许按产品类别设置差异化标准。',
+        action:'建立'+tb.name+'品牌专属质检通道：区分“有维修史”和“当前功能故障”——前者降级可售、后者拦截。高端系列放宽外观划痕标准。'
+      });
+    }
+    return recs;
+  },
+
+  _buildSummaryNote(total,dimCount){
+    const recs=this.analysisData.recommendations||[];
+    const critCount=recs.filter(r=>r.level==='critical').length;
+    const highCount=recs.filter(r=>r.level==='high').length;
+    const updated=(this._industryKB&&this._industryKB.updated)||'--';
+    return '基于当前'+total+'条拦截数据的'+dimCount+'个维度自动分析：共'+recs.length+'条动态建议（'+critCount+'条最高优先级、'+highCount+'条高优先级）。整体方向——从“一刀切拦截”转向“分级分类处理”，从“主观经验”转向“量化标准+竞品对标”。行业数据更新于'+updated+'，不同附件（数据集）会产生不同分析结果。';
+  },
+
+  async runAnalysis(){
+    if(!(this.interceptData.records||[]).length)return this.toastMsg('请先在发货拦截页面导入数据');
+    await this._loadIndustryKB();
+    const records=this.filteredRecords;
+    if(!records.length){this.analysisData=null;return this.toastMsg('当前筛选条件下无数据');}
+    const total=records.length;
+    const intercepted=records.filter(r=>(r['拦截']||'')==='是'||(r['拦截项']||'')!=='-').length;
+    const dimMap={};
+    records.forEach(r=>{
+      const item=(r['拦截项']||'').trim();
+      if(!item||item==='-')return;
+      const l1=item.split('/')[0]||'其他';
+      dimMap[l1]=(dimMap[l1]||0)+1;
+    });
+    const dimensions=Object.entries(dimMap).sort((a,b)=>b[1]-a[1]).map(([name,count])=>({name,count,pct:Math.round(count/intercepted*100)}));
+    const brandMap={};
+    records.forEach(r=>{
+      const b=r['品牌']||'未知';
+      const item=(r['拦截项']||'').trim();
+      if(!item||item==='-')return;
+      if(!brandMap[b])brandMap[b]={total:0,dims:{}};
+      brandMap[b].total++;
+      const l1=item.split('/')[0]||'其他';
+      brandMap[b].dims[l1]=(brandMap[b].dims[l1]||0)+1;
+    });
+    const brands=Object.entries(brandMap).sort((a,b)=>b[1].total-a[1]).map(([name,data])=>{
+      const dims=Object.entries(data.dims).sort((a,b)=>b[1]-a[1]);
+      const topDims=dims.slice(0,2).map(([k])=>k).join('、');
+      const repairPct=Math.round((data.dims['维修浸液']||0)/data.total*100);
+      return {name,total:data.total,topDims,repairPct};
+    });
+    const itemMap={};
+    records.forEach(r=>{
+      const item=(r['拦截项']||'').trim();
+      if(!item||item==='-')return;
+      itemMap[item]=(itemMap[item]||0)+1;
+    });
+    const topItems=Object.entries(itemMap).sort((a,b)=>b[1]-a[1]).slice(0,15).map(([name,count])=>({name,count}));
+    const uniqueItems=Object.keys(itemMap).length;
+    this.analysisData={
+      summary:{total,intercepted,rate:Math.round(intercepted/total*100),uniqueItems},
+      dimensions, brands, topItems, benchmarks:[], recommendations:[], summaryNote:''
+    };
+    this.analysisData.benchmarks=this._generateBenchmarks(dimensions);
+this.analysisData.recommendations=this._generateRecommendations(dimensions,total,brands.slice(0,3));
+this.analysisData.summaryNote=this._buildSummaryNote(total,dimensions.length);
+this.toastMsg('报告生成完成！'+total+'条数据，'+dimensions.length+'个维度，'+this.analysisData.recommendations.length+'条建议');
+  },
+
+  computeWarehouseStats(){const wh={},cats={},mer={};this.interceptData.records.forEach(r=>{const w=r['仓库']||'未知';if(!wh[w])wh[w]={total:0,intercepted:0};wh[w].total++;if(r['拦截']==='是')wh[w].intercepted++;const c=r['品类']||'未知';if(!cats[c])cats[c]={total:0,intercepted:0};cats[c].total++;if(r['拦截']==='是')cats[c].intercepted++;const m=r['商家']||'未知';if(!mer[m])mer[m]={total:0,intercepted:0};mer[m].total++;if(r['拦截']==='是')mer[m].intercepted++;});const fmt=a=>Object.entries(a).sort((a,b)=>b[1].total-a[1].total).map(([name,d])=>({name,total:d.total,intercepted:d.intercepted,passed:d.total-d.intercepted,rate:Math.round(d.intercepted/d.total*100)}));this.warehouseStats=fmt(wh);this.categoryStats=fmt(cats);this.merchantStats=fmt(mer);},
+  toastMsg(msg){this.toast=msg;setTimeout(()=>this.toast='',2500);}
+}};
+</script>
+</body>
+</html>
