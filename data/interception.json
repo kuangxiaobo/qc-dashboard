@@ -2,8 +2,8 @@
   "updated": "2026-08-16",
   "source": "Quick BI 自动获取 (北斗-后验数据看板)",
   "sourceUrl": "https://ldpqbi.zhuanspirit.com/token3rd/dashboard/view/pc.htm?pageId=7072c7c2-90c3-4f15-9db6-b609ff196833&accessToken=6b3285de9821e12ac826c9ec18f164e0&dd_orientation=auto",
-  "fetchedAt": "2026-08-16T03:23:47.914Z",
-  "totalPages": 8,
+  "fetchedAt": "2026-08-16T05:51:33.131Z",
+  "totalPages": 1,
   "summary": {
     "total": 3096,
     "intercepted": 3096,
@@ -4808,7 +4808,7 @@
       "品牌": "vivo",
       "机型": "vivo X200",
       "拦截": "是",
-      "拦截项": "维修浸液/机身/后壳-与中框有溢胶/撬痕"
+      "拦截项": "外壳外观/褶皱/褶皱＞5mm"
     },
     {
       "质检码": "1215323628",
