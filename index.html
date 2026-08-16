@@ -552,7 +552,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
           匹配 <b class="text-green-600" x-text="matchResults.filter(r=>r.matched).length"></b> /
           共 <b x-text="matchResults.length"></b> 项
         </span>
-        <button type="button" title="只导出未匹配的拦截项" @click="exportUnmatched()" x-show="matchResults.some(r=>!r.matched)" class="export-unmatched-btn text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出未匹配</button>
+        <button type="button" title="导出未匹配的拦截项明细(含质检码/商户名称/品类)" @click="exportUnmatched()" x-show="matchResults.some(r=>!r.matched)" class="export-unmatched-btn text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出未匹配</button>
       </span>
     </div>
     <div class="p-4">
@@ -861,7 +861,7 @@ function app(){return{
   standards:null,loading:false,search:'',level1Filter:'',level1List:[],toast:'',
   filteredGroups:[],filteredCount:0,
   interceptData:{records:[],summary:{total:0},topItems:[]},syncDateStart:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncDateEnd:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncing:false,statusMsg:'',filterWarehouse:'',filterCategory:'',filterMerchant:'',filterItems:[],itemInput:'',itemFocus:false,
-  matchResults:[],matchLoading:false,
+  matchResults:[],matchRecords:[],matchLoading:false,
   isStatic:false,analysisData:null,warehouseStats:[],categoryStats:[],merchantStats:[],itemStats:[],filterStats:{warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0},
 
   get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouse&&!this.filterCategory&&!this.filterMerchant&&!this.filterItems.length)return r;const kws=this.filterItems.map(k=>k.trim().toLowerCase()).filter(Boolean);return r.filter(x=>(!this.filterWarehouse||x['仓库']===this.filterWarehouse)&&(!this.filterCategory||x['品类']===this.filterCategory)&&(!this.filterMerchant||x['商家']===this.filterMerchant)&&(!kws.length||kws.some(kw=>(x['拦截项']||'').toLowerCase().includes(kw))));},
@@ -870,7 +870,7 @@ function app(){return{
   pickFilterItem(name){this.addFilterItem(name);},
   itemInputBlur(){const self=this;setTimeout(()=>{self.itemInput='';},150);},
   exportDetail(){const recs=this.filteredRecords||[];if(!recs.length)return this.toastMsg('当前没有可导出的数据');const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['质检码','日期','类型','商家站点','中心仓','品类','品牌','机型','拦截','拦截项']];recs.forEach(r=>cols.push([r['质检码'],r['日期'],r['类型'],r['商家'],r['仓库'],r['品类'],r['品牌'],r['机型'],r['拦截'],r['拦截项']||'-']));const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='拦截数据明细_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+recs.length+' 条记录: '+fname);},
-  exportUnmatched(){const rows=this.matchResults.filter(r=>!r.matched);if(!rows.length)return this.toastMsg('没有未匹配的拦截项');const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['序号','拦截项','出现次数','最接近标准','匹配得分']];rows.forEach((r,i)=>cols.push([i+1,r.item,r.count,r.matchPath||'-',r.score]));const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='未匹配拦截项_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+rows.length+' 条未匹配拦截项: '+fname);},
+  exportUnmatched(){const unmatched=this.matchResults.filter(r=>!r.matched);if(!unmatched.length)return this.toastMsg('没有未匹配的拦截项');const byItem={};unmatched.forEach(r=>{byItem[r.item]={path:r.matchPath||'-',score:r.score};});const records=(this.matchRecords&&this.matchRecords.length?this.matchRecords:this.filteredRecords||[]).filter(r=>byItem[r['拦截项']]);const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['质检码','日期','商户名称','品类','拦截项','最接近标准','匹配得分']];const order=unmatched.map(r=>r.item);records.sort((a,b)=>{const ia=order.indexOf(a['拦截项']),ib=order.indexOf(b['拦截项']);return ia!==ib?ia-ib:String(a['质检码']).localeCompare(String(b['质检码']));});records.forEach(r=>{const m=byItem[r['拦截项']];cols.push([r['质检码'],r['日期'],r['商家'],r['品类'],r['拦截项'],m.path,m.score]);});const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='未匹配拦截项明细_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+records.length+' 条未匹配明细(共 '+unmatched.length+' 个拦截项): '+fname);},
 
   // 基于当前筛选条件的统计（跟随筛选联动，筛选变化时重新计算一次）
   updateFilterStats(){
@@ -907,13 +907,13 @@ function app(){return{
   doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
   highlight(text){if(!this.search||!text)return text;const re=new RegExp('('+this.search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return text.replace(re,'<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');},
 
-  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouse='';this.filterCategory='';this.filterMerchant='';this.filterItems=[];this.itemInput='';this.itemFocus=false;if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
+  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.matchRecords=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouse='';this.filterCategory='';this.filterMerchant='';this.filterItems=[];this.itemInput='';this.itemFocus=false;if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
   async syncFromQuickBI(){if(this.isStatic)return this.toastMsg('📦 当前为静态站点:数据由管理员同步更新,如需最新数据请联系管理员');this.syncing=true;const range=this.syncDateStart+' ~ '+this.syncDateEnd;this.toastMsg('正在同步 '+range+' 的拦截数据...');try{const r=await fetch('/api/fetch-interception?dateStart='+this.syncDateStart+'&dateEnd='+this.syncDateEnd);const result=await r.json();if(result.ok){await this.loadInterceptData();this.toastMsg('✅ 同步完成：'+result.data.summary.total+' 条记录'+(result.durationMs?'(用时 '+(result.durationMs/1000).toFixed(1)+' 秒)':''));if(this.interceptData.records.length>0&&typeof this.runAnalysis==='function'){setTimeout(()=>this.runAnalysis(),500);}}else{this.toastMsg('❌ 同步失败: '+(result.error||'未知错误'));}}catch(e){this.toastMsg('❌ 请求失败: '+e.message);}this.syncing=false;},
 
   async runStandardMatch(){
     const records=this.filteredRecords;
     if(!records.length)return this.toastMsg('当前筛选条件下无数据，请调整筛选');
-    this.matchLoading=true;this.matchResults=[];
+    this.matchLoading=true;this.matchResults=[];this.matchRecords=[];
     const cats=new Set();
     records.forEach(r=>{const c=r['品类']||'';if(c&&c!=='-')cats.add(c);});
     if(cats.size===0)cats.add(this.category);
@@ -969,6 +969,7 @@ function app(){return{
     }
     results.sort((a,b)=>b.count-a.count);
     this.matchResults=results;
+    this.matchRecords=records;
     this.matchLoading=false;
     this.toastMsg('匹配完成：'+results.filter(r=>r.matched).length+'/'+results.length+' 条命中');
   },
