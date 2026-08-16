@@ -330,12 +330,6 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
         <input type="date" x-model="syncDateStart" x-show="!isStatic" class="input text-sm" style="width:auto;padding:6px 10px" title="开始日期">
         <span x-show="!isStatic" class="text-gray-400 text-xs">至</span>
         <input type="date" x-model="syncDateEnd" x-show="!isStatic" class="input text-sm" style="width:auto;padding:6px 10px" title="截至日期">
-        <button @click="syncFromQuickBI()" x-show="!isStatic" :disabled="syncing" class="btn btn-outline btn-sm">
-          <span x-show="!syncing">🔄 同步北斗数据</span>
-          <span x-show="syncing" class="inline-flex items-center gap-1"><span class="animate-spin inline-block">⏳</span> 同步中…</span>
-        </button>
-        <span x-show="isStatic" class="text-xs text-gray-500">📦 静态站点 · 数据由管理员同步更新(最近更新: <b x-text="lastUpdate||'-'"></b>)</span>
-        <span x-show="(interceptData.records||[]).length>0" class="text-gray-300 mx-1">|</span>
         <!-- 多选仓库 -->
         <div x-show="(interceptData.records||[]).length>0" class="relative">
           <div @click="$refs.whInput&&$refs.whInput.focus()" class="input text-xs flex flex-wrap items-center gap-1" style="width:210px;min-height:32px;padding:3px 6px;cursor:text">
@@ -433,6 +427,12 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
             </template>
           </div>
         </div>
+        <button @click="syncFromQuickBI()" x-show="!isStatic" :disabled="syncing" class="btn btn-outline btn-sm">
+          <span x-show="!syncing">🔄 同步北斗数据</span>
+          <span x-show="syncing" class="inline-flex items-center gap-1"><span class="animate-spin inline-block">⏳</span> 同步中…</span>
+        </button>
+        <span x-show="isStatic" class="text-xs text-gray-500">📦 静态站点 · 数据由管理员同步更新(最近更新: <b x-text="lastUpdate||'-'"></b>)</span>
+        <span x-show="(interceptData.records||[]).length>0" class="text-gray-300 mx-1">|</span>
         <button @click="filterWarehouses=[];filterCats=[];filterMerchants=[];filterItems=[];whInput='';catInput='';merInput='';itemInput=''" x-show="filterWarehouses.length||filterCats.length||filterMerchants.length||filterItems.length" class="text-xs text-blue-500 hover:underline">✕ 清除</button>
         <span x-show="(interceptData.records||[]).length>0" class="text-xs text-gray-400" x-text="'匹配 '+filteredRecords.length+' 条'"></span>
         <button @click="clearInterceptData()" class="btn btn-danger btn-sm" x-show="(interceptData.records||[]).length>0" style="margin-left:auto">清空</button>
