@@ -259,7 +259,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
                 <div class="px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50/30 transition-colors">
                   <!-- 第一行：三级项名称 + 成色等级 -->
                   <div class="flex items-center gap-2 mb-2">
-                    <span class="text-sm font-bold text-gray-800" x-text="item['_三级项']||'(未命名)'"></span>
+                    <span class="text-sm font-bold text-gray-800" x-text="item['_三级项']||l2.name"></span>
                     <span x-show="item['_成色']" x-text="item['_成色']"
                       :class="(item['_成色']||'').includes('不进卖场')?'tag tag-red':(item['_成色']||'').match(/[\/,，、]/)?'tag tag-green':'tag tag-amber'"
                       class="tag flex-shrink-0 text-xs"></span>
@@ -275,10 +275,10 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
                       <span class="text-gray-600 font-medium" x-text="item['_聚合项']"></span>
                     </div>
                   </div>
-                  <!-- 第三行：标准定义（完整展示） -->
-                  <div class="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-md p-2.5 border border-gray-100">
+                  <!-- 第三行：标准定义（完整展示,无定义时不显示该块） -->
+                  <div class="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-md p-2.5 border border-gray-100" x-show="item['_标准定义']">
                     <span class="text-gray-400 mr-1">📝</span>
-                    <span x-text="item['_标准定义']||'(暂无标准定义)'"></span>
+                    <span x-text="item['_标准定义']"></span>
                   </div>
                 </div>
               </template>
@@ -901,7 +901,7 @@ function app(){return{
 
   async loadInterceptData(){try{const r=await fetch(this.isStatic?'data/interception.json':'/api/interception');if(r.ok)this.interceptData=await r.json();this.lastUpdate=this.interceptData.updated||'-';}catch(e){console.error('loadInterceptData:',e.message);this.statusMsg='⚠️ 加载拦截数据失败: '+e.message;}this.interceptData.summary=this.interceptData.summary||{total:0};this.interceptData.topItems=this.interceptData.topItems||[];this.interceptData.records=this.interceptData.records||[];this.computeWarehouseStats();this.updateFilterStats();},
 
-  async loadStandards(){this.loading=true;try{const url=this.isStatic?'data/standards-'+encodeURIComponent(this.category)+'.json':'/api/standards?category='+encodeURIComponent(this.category);const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);this.standards=await r.json();this.standards.flatItems.forEach((item,i)=>{item._id=this.category+'-'+i;const keys=Object.keys(item);item._三级项=item[keys.find(k=>k.includes('三级验机'))||'']||'';item._成色=item[keys.find(k=>k.includes('成色')&&k.includes('等级'))||'']||'';item._标准定义=item[keys.find(k=>k.includes('标准定义'))||'']||'';item._适用品牌=item[keys.find(k=>k.includes('适用')&&k.includes('品牌'))||'']||'';item._聚合项=item[keys.find(k=>k.includes('聚合'))||'']||'';});const seen=new Set();this.level1List=[];this.standards.groups.forEach(g=>{if(!seen.has(g.name)){seen.add(g.name);this.level1List.push(g.name);}});this.doSearch();}catch(e){this.toastMsg('加载失败: '+e.message);}this.loading=false;},
+  async loadStandards(){this.loading=true;try{const url=this.isStatic?'data/standards-'+encodeURIComponent(this.category)+'.json':'/api/standards?category='+encodeURIComponent(this.category);const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);this.standards=await r.json();this.standards.flatItems.forEach((item,i)=>{item._id=this.category+'-'+i;const keys=Object.keys(item);const V=f=>{const k=keys.find(f);const v=k?String(item[k]||'').trim():'';return (v&&v!=='/')?v:'';};item._三级项=V(k=>k.includes('三级验机'));item._成色=V(k=>k.includes('成色')&&k.includes('等级'));item._标准定义=V(k=>k.includes('标准定义'));item._适用品牌=V(k=>k.includes('适用')&&k.includes('品牌'));item._聚合项=V(k=>k.includes('聚合'));});const seen=new Set();this.level1List=[];this.standards.groups.forEach(g=>{if(!seen.has(g.name)){seen.add(g.name);this.level1List.push(g.name);}});this.doSearch();}catch(e){this.toastMsg('加载失败: '+e.message);}this.loading=false;},
   selectCategory(c){this.category=c;this.search='';this.level1Filter='';this.loadStandards();},
 
   doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
