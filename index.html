@@ -384,12 +384,30 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
             </template>
           </div>
         </div>
-        <select x-model="filterMerchant" x-show="(interceptData.records||[]).length>0" class="input text-xs" style="width:auto;padding:4px 8px">
-          <option value="">🏪 全部商家</option>
-          <template x-for="m in merchantStats" :key="m.name">
-            <option :value="m.name" x-text="m.name+' ('+m.total+')'"></option>
-          </template>
-        </select>
+        <!-- 多选商户 -->
+        <div x-show="(interceptData.records||[]).length>0" class="relative">
+          <div @click="$refs.merInput&&$refs.merInput.focus()" class="input text-xs flex flex-wrap items-center gap-1" style="width:200px;min-height:32px;padding:3px 6px;cursor:text">
+            <template x-for="(kw,idx) in filterMerchants" :key="kw">
+              <span class="mer-tag inline-flex items-center gap-1 bg-orange-100 text-orange-700 rounded px-1.5 py-0.5">
+                <span x-text="kw"></span>
+                <button type="button" @click.stop="filterMerchants.splice(idx,1)" class="text-orange-400 hover:text-red-500 font-bold leading-none">✕</button>
+              </span>
+            </template>
+            <input x-ref="merInput" type="text" x-model="merInput" placeholder="🏪 商户多选" class="flex-1 text-xs" style="border:none;outline:none;background:transparent;min-width:70px;padding:2px"
+              @keydown.enter.prevent="addMerchant()"
+              @keydown.backspace="if(!merInput&&filterMerchants.length)filterMerchants.pop()"
+              @focus="merFocus=true"
+              @blur="merFocus=false;merchantInputBlur()">
+          </div>
+          <div x-show="merFocus&&merchantSuggestions.length>0" class="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg z-50" style="width:240px;max-height:300px;overflow-y:auto">
+            <template x-for="s in merchantSuggestions" :key="s.name">
+              <button type="button" @mousedown.prevent @click="pickMerchant(s.name)" class="item-sug w-full text-left px-2.5 py-1.5 hover:bg-orange-50 text-xs flex items-center justify-between gap-2 border-b border-gray-50">
+                <span class="truncate" x-text="s.name"></span>
+                <span class="text-gray-400 flex-shrink-0" x-text="s.total+'条'"></span>
+              </button>
+            </template>
+          </div>
+        </div>
         <!-- 多选拦截项 -->
         <div x-show="(interceptData.records||[]).length>0" class="relative">
           <div @click="$refs.itemInput&&$refs.itemInput.focus()" class="input text-xs flex flex-wrap items-center gap-1" style="width:300px;min-height:32px;padding:3px 6px;cursor:text">
@@ -415,7 +433,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
             </template>
           </div>
         </div>
-        <button @click="filterWarehouses=[];filterCats=[];filterMerchant='';filterItems=[];whInput='';catInput='';itemInput=''" x-show="filterWarehouses.length||filterCats.length||filterMerchant||filterItems.length" class="text-xs text-blue-500 hover:underline">✕ 清除</button>
+        <button @click="filterWarehouses=[];filterCats=[];filterMerchants=[];filterItems=[];whInput='';catInput='';merInput='';itemInput=''" x-show="filterWarehouses.length||filterCats.length||filterMerchants.length||filterItems.length" class="text-xs text-blue-500 hover:underline">✕ 清除</button>
         <span x-show="(interceptData.records||[]).length>0" class="text-xs text-gray-400" x-text="'匹配 '+filteredRecords.length+' 条'"></span>
         <button @click="clearInterceptData()" class="btn btn-danger btn-sm" x-show="(interceptData.records||[]).length>0" style="margin-left:auto">清空</button>
       </div>
@@ -531,7 +549,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
     <div class="card-header">
       <span>📋 数据明细</span>
       <span class="flex items-center gap-3">
-        <span class="text-xs text-gray-400" x-text="filteredRecords.length>0?'共 '+filteredRecords.length+' 条'+(filterWarehouses.length||filterCats.length||filterMerchant||filterItems.length?' (已筛选)':''):'等待同步'"></span>
+        <span class="text-xs text-gray-400" x-text="filteredRecords.length>0?'共 '+filteredRecords.length+' 条'+(filterWarehouses.length||filterCats.length||filterMerchants.length||filterItems.length?' (已筛选)':''):'等待同步'"></span>
         <button type="button" title="导出当前筛选结果(全部行数)" @click="exportDetail()" x-show="filteredRecords.length>0" class="export-detail-btn text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出</button>
       </span>
     </div>
@@ -642,7 +660,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
   <div x-show="filterStats.topItems.length>0" class="card">
     <div class="card-header">
       <span>🏆 拦截项 TOP 排名</span>
-      <span class="text-xs text-gray-400 font-normal" x-show="filterWarehouses.length||filterCats.length||filterMerchant">已按筛选统计</span>
+      <span class="text-xs text-gray-400 font-normal" x-show="filterWarehouses.length||filterCats.length||filterMerchants.length">已按筛选统计</span>
     </div>
     <div class="p-4">
       <div class="space-y-2">
@@ -673,8 +691,8 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
     <div>
       <h2 class="font-bold text-gray-800 text-lg">拦截数据分析报告</h2>
       <p class="text-sm text-gray-400 mt-0.5">基于拦截记录的实时统计分析</p>
-      <p class="text-sm text-blue-600 mt-0.5" x-show="filterWarehouses.length||filterCats.length||filterMerchant"
-        x-text="'🔍 '+(filterWarehouses.length?'仓库='+filterWarehouses.join('、')+'　':'')+(filterCats.length?'品类='+filterCats.join('、')+'　':'')+(filterMerchant?'商家='+filterMerchant+'　':'')+(filterItems.length?'拦截项='+filterItems.join('、')+'　':'')+'· 基于 '+filteredRecords.length+' 条数据分析'"></p>
+      <p class="text-sm text-blue-600 mt-0.5" x-show="filterWarehouses.length||filterCats.length||filterMerchants.length"
+        x-text="'🔍 '+(filterWarehouses.length?'仓库='+filterWarehouses.join('、')+'　':'')+(filterCats.length?'品类='+filterCats.join('、')+'　':'')+(filterMerchants.length?'商户='+filterMerchants.join('、')+'　':'')+(filterItems.length?'拦截项='+filterItems.join('、')+'　':'')+'· 基于 '+filteredRecords.length+' 条数据分析'"></p>
     </div>
   </div>
 
@@ -901,14 +919,15 @@ function app(){return{
   categoryGroups:{'':['手机','笔记本','平板','手表','耳机'],'相机':['相机-单反','相机-微单','相机-镜头']},
   standards:null,loading:false,search:'',level1Filter:'',level1List:[],toast:'',
   filteredGroups:[],filteredCount:0,
-  interceptData:{records:[],summary:{total:0},topItems:[]},syncDateStart:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncDateEnd:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncing:false,statusMsg:'',filterWarehouses:[],filterCats:[],whInput:'',whFocus:false,catInput:'',catFocus:false,filterMerchant:'',filterItems:[],itemInput:'',itemFocus:false,
+  interceptData:{records:[],summary:{total:0},topItems:[]},syncDateStart:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncDateEnd:(()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})(),syncing:false,statusMsg:'',filterWarehouses:[],filterCats:[],whInput:'',whFocus:false,catInput:'',catFocus:false,filterMerchants:[],merInput:'',merFocus:false,filterItems:[],itemInput:'',itemFocus:false,
   matchResults:[],matchRecords:[],matchLoading:false,
   isStatic:false,analysisData:null,warehouseStats:[],categoryStats:[],merchantStats:[],itemStats:[],filterStats:{warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0},
 
-  get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouses.length&&!this.filterCats.length&&!this.filterMerchant&&!this.filterItems.length)return r;const whs=this.filterWarehouses,cats=this.filterCats,kws=this.filterItems.map(k=>k.trim().toLowerCase()).filter(Boolean);return r.filter(x=>(!whs.length||whs.some(w=>x['仓库']===w))&&(!cats.length||cats.some(c=>x['品类']===c))&&(!this.filterMerchant||x['商家']===this.filterMerchant)&&(!kws.length||kws.some(kw=>(x['拦截项']||'').toLowerCase().includes(kw))));},
+  get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouses.length&&!this.filterCats.length&&!this.filterMerchants.length&&!this.filterItems.length)return r;const whs=this.filterWarehouses,cats=this.filterCats,mers=this.filterMerchants,kws=this.filterItems.map(k=>k.trim().toLowerCase()).filter(Boolean);return r.filter(x=>(!whs.length||whs.some(w=>x['仓库']===w))&&(!cats.length||cats.some(c=>x['品类']===c))&&(!mers.length||mers.some(m=>x['商家']===m))&&(!kws.length||kws.some(kw=>(x['拦截项']||'').toLowerCase().includes(kw))));},
   get itemSuggestions(){const kw=(this.itemInput||'').trim().toLowerCase();const sel=new Set(this.filterItems.map(k=>k.trim().toLowerCase()));const src=(this.itemStats||[]).filter(it=>!sel.has(it.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(it=>it.name.toLowerCase().includes(kw)).slice(0,30);},
   get warehouseSuggestions(){const kw=(this.whInput||'').trim().toLowerCase();const sel=new Set(this.filterWarehouses.map(k=>k.trim().toLowerCase()));const src=(this.warehouseStats||[]).filter(w=>!sel.has(w.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(w=>w.name.toLowerCase().includes(kw)).slice(0,30);},
   get categorySuggestions(){const kw=(this.catInput||'').trim().toLowerCase();const sel=new Set(this.filterCats.map(k=>k.trim().toLowerCase()));const src=(this.categoryStats||[]).filter(c=>!sel.has(c.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(c=>c.name.toLowerCase().includes(kw)).slice(0,30);},
+  get merchantSuggestions(){const kw=(this.merInput||'').trim().toLowerCase();const sel=new Set(this.filterMerchants.map(k=>k.trim().toLowerCase()));const src=(this.merchantStats||[]).filter(m=>!sel.has(m.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(m=>m.name.toLowerCase().includes(kw)).slice(0,30);},
   addFilterItem(name){const kw=(name!=null?name:this.itemInput||'').trim();if(!kw)return;const lk=kw.toLowerCase();if(!this.filterItems.some(k=>k.toLowerCase()===lk))this.filterItems.push(kw);this.itemInput='';this.$nextTick(()=>{const i=this.$refs.itemInput;i&&i.focus();});},
   pickFilterItem(name){this.addFilterItem(name);},
   itemInputBlur(){const self=this;setTimeout(()=>{self.itemInput='';},150);},
@@ -918,6 +937,9 @@ function app(){return{
   addCat(name){const kw=(name!=null?name:this.catInput||'').trim();if(!kw)return;const lk=kw.toLowerCase();if(!this.filterCats.some(k=>k.toLowerCase()===lk))this.filterCats.push(kw);this.catInput='';this.$nextTick(()=>{const i=this.$refs.catInput;i&&i.focus();});},
   pickCat(name){this.addCat(name);},
   catInputBlur(){const self=this;setTimeout(()=>{self.catInput='';},150);},
+  addMerchant(name){const kw=(name!=null?name:this.merInput||'').trim();if(!kw)return;const lk=kw.toLowerCase();if(!this.filterMerchants.some(k=>k.toLowerCase()===lk))this.filterMerchants.push(kw);this.merInput='';this.$nextTick(()=>{const i=this.$refs.merInput;i&&i.focus();});},
+  pickMerchant(name){this.addMerchant(name);},
+  merchantInputBlur(){const self=this;setTimeout(()=>{self.merInput='';},150);},
   exportDetail(){const recs=this.filteredRecords||[];if(!recs.length)return this.toastMsg('当前没有可导出的数据');const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['质检码','日期','类型','商家站点','中心仓','品类','品牌','机型','拦截','拦截项']];recs.forEach(r=>cols.push([r['质检码'],r['日期'],r['类型'],r['商家'],r['仓库'],r['品类'],r['品牌'],r['机型'],r['拦截'],r['拦截项']||'-']));const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='拦截数据明细_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+recs.length+' 条记录: '+fname);},
   exportUnmatched(){const unmatched=this.matchResults.filter(r=>!r.matched);if(!unmatched.length)return this.toastMsg('没有未匹配的拦截项');const byItem={};unmatched.forEach(r=>{byItem[r.item]={path:r.matchPath||'-',score:r.score};});const records=(this.matchRecords&&this.matchRecords.length?this.matchRecords:this.filteredRecords||[]).filter(r=>byItem[r['拦截项']]);const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['质检码','日期','商户名称','品类','拦截项','最接近标准','匹配得分']];const order=unmatched.map(r=>r.item);records.sort((a,b)=>{const ia=order.indexOf(a['拦截项']),ib=order.indexOf(b['拦截项']);return ia!==ib?ia-ib:String(a['质检码']).localeCompare(String(b['质检码']));});records.forEach(r=>{const m=byItem[r['拦截项']];cols.push([r['质检码'],r['日期'],r['商家'],r['品类'],r['拦截项'],m.path,m.score]);});const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='未匹配拦截项明细_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+records.length+' 条未匹配明细(共 '+unmatched.length+' 个拦截项): '+fname);},
 
@@ -940,13 +962,13 @@ function app(){return{
   onFilterChange(){
     if(!(this.interceptData.records||[]).length)return;
     this.updateFilterStats();
-    if(this.analysisData||this.filterWarehouses.length||this.filterCats.length||this.filterMerchant||this.filterItems.length)this.runAnalysis();
+    if(this.analysisData||this.filterWarehouses.length||this.filterCats.length||this.filterMerchants.length||this.filterItems.length)this.runAnalysis();
   },
 
   switchView(v){this.view=v;if(v==='analysis'&&(this.interceptData.records||[]).length&&!this.analysisData)this.runAnalysis();},
   // 检测是否为纯静态部署(GitHub Pages等,无后端API):探测/api/interception是否可用
   async detectStatic(){try{const r=await fetch('/api/interception');this.isStatic=!(r&&r.ok);}catch(e){this.isStatic=true;}if(this.isStatic)console.log('📦 静态部署模式:数据从 data/*.json 直读');},
-  async init(){this.$watch('filterWarehouses',()=>{clearTimeout(this._whDebounce);this._whDebounce=setTimeout(()=>this.onFilterChange(),300);});this.$watch('filterCats',()=>{clearTimeout(this._catDebounce);this._catDebounce=setTimeout(()=>this.onFilterChange(),300);});this.$watch('filterMerchant',()=>this.onFilterChange());this.$watch('filterItems',()=>{clearTimeout(this._itemDebounce);this._itemDebounce=setTimeout(()=>this.onFilterChange(),300);});await this.detectStatic();await Promise.all([this.loadStandards(),this.loadInterceptData()]);},
+  async init(){this.$watch('filterWarehouses',()=>{clearTimeout(this._whDebounce);this._whDebounce=setTimeout(()=>this.onFilterChange(),300);});this.$watch('filterCats',()=>{clearTimeout(this._catDebounce);this._catDebounce=setTimeout(()=>this.onFilterChange(),300);});this.$watch('filterMerchants',()=>{clearTimeout(this._merDebounce);this._merDebounce=setTimeout(()=>this.onFilterChange(),300);});this.$watch('filterItems',()=>{clearTimeout(this._itemDebounce);this._itemDebounce=setTimeout(()=>this.onFilterChange(),300);});await this.detectStatic();await Promise.all([this.loadStandards(),this.loadInterceptData()]);},
 
   async loadInterceptData(){try{const r=await fetch(this.isStatic?'data/interception.json':'/api/interception');if(r.ok)this.interceptData=await r.json();this.lastUpdate=this.interceptData.updated||'-';}catch(e){console.error('loadInterceptData:',e.message);this.statusMsg='⚠️ 加载拦截数据失败: '+e.message;}this.interceptData.summary=this.interceptData.summary||{total:0};this.interceptData.topItems=this.interceptData.topItems||[];this.interceptData.records=this.interceptData.records||[];this.computeWarehouseStats();this.updateFilterStats();},
 
@@ -998,7 +1020,7 @@ function app(){return{
   doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredGroups.forEach((g,gi)=>{g._k=this.category+'|'+gi;g.filteredGroups.forEach((l2,li)=>{l2._k=g._k+'|'+li;});});this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
   highlight(text){if(!this.search||!text)return text;const re=new RegExp('('+this.search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return text.replace(re,'<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');},
 
-  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.matchRecords=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouses=[];this.filterCats=[];this.whInput='';this.whFocus=false;this.catInput='';this.catFocus=false;this.filterMerchant='';this.filterItems=[];this.itemInput='';this.itemFocus=false;if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
+  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.matchRecords=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouses=[];this.filterCats=[];this.whInput='';this.whFocus=false;this.catInput='';this.catFocus=false;this.filterMerchants=[];this.merInput='';this.merFocus=false;this.filterItems=[];this.itemInput='';this.itemFocus=false;if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
   async syncFromQuickBI(){if(this.isStatic)return this.toastMsg('📦 当前为静态站点:数据由管理员同步更新,如需最新数据请联系管理员');this.syncing=true;const range=this.syncDateStart+' ~ '+this.syncDateEnd;this.toastMsg('正在同步 '+range+' 的拦截数据...');try{const r=await fetch('/api/fetch-interception?dateStart='+this.syncDateStart+'&dateEnd='+this.syncDateEnd);const result=await r.json();if(result.ok){await this.loadInterceptData();this.toastMsg('✅ 同步完成：'+result.data.summary.total+' 条记录'+(result.durationMs?'(用时 '+(result.durationMs/1000).toFixed(1)+' 秒)':''));if(this.interceptData.records.length>0&&typeof this.runAnalysis==='function'){setTimeout(()=>this.runAnalysis(),500);}}else{this.toastMsg('❌ 同步失败: '+(result.error||'未知错误'));}}catch(e){this.toastMsg('❌ 请求失败: '+e.message);}this.syncing=false;},
 
   async runStandardMatch(){
