@@ -233,7 +233,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
 
   <!-- 标准列表 -->
   <div x-show="!loading" class="space-y-3">
-    <template x-for="l1 in filteredGroups" :key="l1.name">
+    <template x-for="l1 in filteredGroups" :key="l1._k">
       <div class="card overflow-hidden">
         <!-- 一级项标题 -->
         <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-white border-b border-blue-100 flex items-center gap-3">
@@ -246,7 +246,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
 
         <!-- 标准列表（卡片布局，兼容所有浏览器） -->
         <div class="divide-y divide-gray-100">
-          <template x-for="l2 in l1.filteredGroups" :key="l2.name">
+          <template x-for="l2 in l1.filteredGroups" :key="l2._k">
             <div>
               <!-- 二级项标题 -->
               <div class="px-4 py-2.5 bg-gray-50/80 flex items-center gap-2 border-b border-gray-100">
@@ -255,7 +255,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
                 <span class="text-xs text-gray-400" x-text="'('+l2.items.length+'条)'"></span>
               </div>
               <!-- 三级项列表 -->
-              <template x-for="(item,i) in l2.items" :key="i">
+              <template x-for="(item,i) in l2.items" :key="item._id">
                 <div class="px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50/30 transition-colors">
                   <!-- 第一行：三级项名称 + 成色等级 -->
                   <div class="flex items-center gap-2 mb-2">
@@ -279,6 +279,11 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
                   <div class="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-md p-2.5 border border-gray-100" x-show="item['_标准定义']">
                     <span class="text-gray-400 mr-1">📝</span>
                     <span x-text="item['_标准定义']"></span>
+                  </div>
+                  <!-- 无标准定义时:显示标准表里的其他文字描述 -->
+                  <div class="text-xs text-gray-600 leading-relaxed bg-amber-50 rounded-md p-2.5 border border-amber-100" x-show="!item['_标准定义']&&item['_补充描述']">
+                    <span class="text-gray-400 mr-1">📝</span>
+                    <span x-text="item['_补充描述']"></span>
                   </div>
                 </div>
               </template>
@@ -901,10 +906,52 @@ function app(){return{
 
   async loadInterceptData(){try{const r=await fetch(this.isStatic?'data/interception.json':'/api/interception');if(r.ok)this.interceptData=await r.json();this.lastUpdate=this.interceptData.updated||'-';}catch(e){console.error('loadInterceptData:',e.message);this.statusMsg='⚠️ 加载拦截数据失败: '+e.message;}this.interceptData.summary=this.interceptData.summary||{total:0};this.interceptData.topItems=this.interceptData.topItems||[];this.interceptData.records=this.interceptData.records||[];this.computeWarehouseStats();this.updateFilterStats();},
 
-  async loadStandards(){this.loading=true;try{const url=this.isStatic?'data/standards-'+encodeURIComponent(this.category)+'.json':'/api/standards?category='+encodeURIComponent(this.category);const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);this.standards=await r.json();this.standards.flatItems.forEach((item,i)=>{item._id=this.category+'-'+i;const keys=Object.keys(item);const V=f=>{const k=keys.find(f);const v=k?String(item[k]||'').trim():'';return (v&&v!=='/')?v:'';};item._三级项=V(k=>k.includes('三级验机'));item._成色=V(k=>k.includes('成色')&&k.includes('等级'));item._标准定义=V(k=>k.includes('标准定义'));item._适用品牌=V(k=>k.includes('适用')&&k.includes('品牌'));item._聚合项=V(k=>k.includes('聚合'));});const seen=new Set();this.level1List=[];this.standards.groups.forEach(g=>{if(!seen.has(g.name)){seen.add(g.name);this.level1List.push(g.name);}});this.doSearch();}catch(e){this.toastMsg('加载失败: '+e.message);}this.loading=false;},
+  // 提取显示字段 + 补全三级项下方的文字描述(定义空时:引用目标组定义/收集标准表其他列文字)
+  decorateItems(items){
+    const col=(it,f)=>{const k=Object.keys(it).find(x=>f(x)&&!x.includes('盘古')&&!x.includes('图'));const v=k?String(it[k]||'').trim():'';return (v&&v!=='/')?v:'';};
+    items.forEach((item,i)=>{
+      item._id=item._id||(this.category||'')+'-'+i;
+      item._三级项=col(item,k=>k.includes('三级'));
+      item._成色=col(item,k=>k.includes('成色')&&k.includes('等级'));
+      item._标准定义=col(item,k=>k.includes('标准定义'));
+      item._适用品牌=col(item,k=>k.includes('适用')&&k.includes('品牌'));
+      item._聚合项=col(item,k=>k.includes('聚合'));
+      item._补充描述='';
+    });
+    // 引用补全:备注里"标准内容在XX-YY" → 取目标组同名三级项的标准定义
+    const byPath1=new Map(),byPath2=new Map();
+    items.forEach(it=>{
+      const l1=col(it,k=>k.includes('一级')),l2=col(it,k=>k.includes('二级')),l3=col(it,k=>k.includes('三级'));
+      if(!it._标准定义)return;
+      if(l1&&l2&&l3)byPath1.set(l1+'|'+l2+'|'+l3,it._标准定义);
+      if(l2&&l3&&!byPath2.has(l2+'|'+l3))byPath2.set(l2+'|'+l3,it._标准定义);
+    });
+    items.forEach(it=>{
+      if(it._标准定义)return;
+      const l3=col(it,k=>k.includes('三级'));
+      const note=Object.keys(it).filter(k=>k.includes('备注')).map(k=>String(it[k]||'')).join(' ');
+      const m=note.match(/标准内容在([^\-－—]+)[\-－—](.+)/);
+      if(m&&l3){
+        const t=byPath1.get(m[1].trim()+'|'+m[2].trim()+'|'+l3)||byPath2.get(m[2].trim()+'|'+l3);
+        if(t)it._标准定义=t;
+      }
+      if(it._标准定义)return;
+      // 仍无定义:把标准表里其他文字描述收集到三级项下方
+      const parts=[];
+      Object.keys(it).forEach(k=>{
+        if(k.startsWith('_')||k.includes('一级')||k.includes('二级')||k.includes('三级')||k.includes('标准定义')||k.includes('聚合')||k.includes('成色')||k.includes('盘古')||k.includes('图'))return;
+        const v=String(it[k]||'').trim();
+        if(!v||v==='/'||v==='-')return;
+        parts.push(k+'：'+v.replace(/\s*\n+\s*/g,' '));
+      });
+      it._补充描述=parts.join(' ｜ ');
+    });
+  },
+
+  async loadStandards(){this.loading=true;try{const url=this.isStatic?'data/standards-'+encodeURIComponent(this.category)+'.json':'/api/standards?category='+encodeURIComponent(this.category);const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);this.standards=await r.json();this.standards.flatItems.forEach((item,i)=>{item._id=this.category+'-'+i;});const allItems=[...this.standards.flatItems];this.standards.groups.forEach(g=>g.groups.forEach(gg=>allItems.push(...gg.items)));this.decorateItems(allItems);const seen=new Set();this.level1List=[];this.standards.groups.forEach(g=>{if(!seen.has(g.name)){seen.add(g.name);this.level1List.push(g.name);}});this.doSearch();}catch(e){this.toastMsg('加载失败: '+e.message);}this.loading=false;},
   selectCategory(c){this.category=c;this.search='';this.level1Filter='';this.loadStandards();},
 
-  doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
+  doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredGroups.forEach((g,gi)=>{g._k=this.category+'|'+gi;g.filteredGroups.forEach((l2,li)=>{l2._k=g._k+'|'+li;});});this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
   highlight(text){if(!this.search||!text)return text;const re=new RegExp('('+this.search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return text.replace(re,'<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');},
 
   clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.matchRecords=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouse='';this.filterCategory='';this.filterMerchant='';this.filterItems=[];this.itemInput='';this.itemFocus=false;if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
@@ -928,14 +975,7 @@ function app(){return{
         const r=await fetch('/api/standards?category='+encodeURIComponent(mapped));
         if(r.ok){
           const data=await r.json();
-          data.flatItems.forEach(item=>{
-            const keys=Object.keys(item);
-            item._三级项=item[keys.find(k=>k.includes('三级验机'))||'']||'';
-            item._成色=item[keys.find(k=>k.includes('成色')&&k.includes('等级'))||'']||'';
-            item._标准定义=item[keys.find(k=>k.includes('标准定义'))||'']||'';
-            item._适用品牌=item[keys.find(k=>k.includes('适用')&&k.includes('品牌'))||'']||'';
-            item._聚合项=item[keys.find(k=>k.includes('聚合'))||'']||'';
-          });
+          this.decorateItems(data.flatItems);
           allFlatItems.push(...data.flatItems);
         }
       }catch(e){}
