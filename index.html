@@ -489,7 +489,10 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
   <div class="card mb-4">
     <div class="card-header">
       <span>📋 数据明细</span>
-      <span class="text-xs text-gray-400" x-text="filteredRecords.length>0?'共 '+filteredRecords.length+' 条'+(filterWarehouse||filterCategory||filterMerchant||filterItems.length?' (已筛选)':''):'等待同步'"></span>
+      <span class="flex items-center gap-3">
+        <span class="text-xs text-gray-400" x-text="filteredRecords.length>0?'共 '+filteredRecords.length+' 条'+(filterWarehouse||filterCategory||filterMerchant||filterItems.length?' (已筛选)':''):'等待同步'"></span>
+        <button type="button" title="导出当前筛选结果(全部行数)" @click="exportDetail()" x-show="filteredRecords.length>0" class="text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出</button>
+      </span>
     </div>
     <!-- 空状态 -->
     <div x-show="!filteredRecords.length" class="p-6 text-center text-gray-400">
@@ -863,6 +866,7 @@ function app(){return{
   addFilterItem(name){const kw=(name!=null?name:this.itemInput||'').trim();if(!kw)return;const lk=kw.toLowerCase();if(!this.filterItems.some(k=>k.toLowerCase()===lk))this.filterItems.push(kw);this.itemInput='';this.$nextTick(()=>{const i=this.$refs.itemInput;i&&i.focus();});},
   pickFilterItem(name){this.addFilterItem(name);},
   itemInputBlur(){const self=this;setTimeout(()=>{self.itemInput='';},150);},
+  exportDetail(){const recs=this.filteredRecords||[];if(!recs.length)return this.toastMsg('当前没有可导出的数据');const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['质检码','日期','类型','商家站点','中心仓','品类','品牌','机型','拦截','拦截项']];recs.forEach(r=>cols.push([r['质检码'],r['日期'],r['类型'],r['商家'],r['仓库'],r['品类'],r['品牌'],r['机型'],r['拦截'],r['拦截项']||'-']));const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='拦截数据明细_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+recs.length+' 条记录: '+fname);},
 
   // 基于当前筛选条件的统计（跟随筛选联动，筛选变化时重新计算一次）
   updateFilterStats(){
