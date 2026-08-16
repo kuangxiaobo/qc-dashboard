@@ -947,25 +947,62 @@ function app(){return{
       if(!item||item==='-')return;
       itemMap[item]=(itemMap[item]||0)+1;
     });
+    // 匹配辅助:拦截项与标准表用词常有差异(如 触摸板/触控板、蓝屏/花屏),做同义词+核心词扩展和全半角归一
+    const SYN={'触摸板':'触控板','触摸屏':'触控屏','蓝屏':'花屏','花屏':'蓝屏','充电器':'适配器','适配器':'充电头','保护膜':'贴膜','振动':'震动','震动':'振动','喇叭':'扬声器','重启':'重启开机','后盖':'后壳','后壳':'后盖'};
+    const CORES=['翻新','浸液','缺失','脱胶','碎裂','掉漆','喷漆','翘起','闪屏','黑屏','花屏','蓝屏','重启','关机','死机','失灵','报毒','漏液','不读卡','不符','更换','序列号','不开机'];
+    const NORM=s=>String(s||'').toLowerCase().replace(/\s/g,'').replace(/[＞＜（）【】；：，。！？、]/g,c=>({'＞':'>','＜':'<','（':'(','）':')','【':'[','】':']','；':';','：':':','，':',','。':'.','！':'!','？':'?','、':'/','　':''}[c]||c));
+    const expandKw=kw=>{const out=[kw];const st=kw.replace(/[（(][^（）()]*[）)]/g,'');if(st&&st!==kw)out.push(st);for(const k in SYN){if(kw.includes(k)){out.push(kw.split(k).join(SYN[k]));out.push(SYN[k]);}}for(const c of CORES){if(kw.includes(c)&&kw!==c)out.push(c);}return [...new Set(out)];};
+    const ngramCov=(kw,text)=>{if(kw.length<3)return 0;let h=0;for(let i=0;i+1<kw.length;i++){if(text.includes(kw.slice(i,i+2)))h++;}return h/(kw.length-1);};
+    const stds=allFlatItems.map(std=>{
+      const keys=Object.keys(std);
+      const l1=std[keys.find(k=>k.includes('一级'))||'']||'';
+      const l2=std[keys.find(k=>k.includes('二级'))||'']||'';
+      const l3=std._三级项||'';const def=std._标准定义||'';
+      const deg=std[keys.find(k=>k.includes('映射程度词'))||'']||'';
+      const agg=std._聚合项||'';
+      return {l1,l2,l3,def,text:NORM(l1+'/'+l2+'/'+l3+' '+def+' '+deg+' '+agg),l3N:NORM(l3),l2N:NORM(l2),defN:NORM(def),aggN:NORM(agg)};
+    });
     const results=[];
     for(const [item,count] of Object.entries(itemMap)){
-      const keywords=item.split('/').map(s=>s.trim()).filter(s=>s.length>=2);
-      if(keywords.length===0){results.push({item,count,matched:false,standardDef:'',matchPath:'',score:0});continue;}
-      let bestMatch=null;let bestScore=0;
-      for(const std of allFlatItems){
-        const l3=std._三级项||'';const def=std._标准定义||'';
-        const l1=std['一级质检项']||'';const l2=std['二级验机项']||'';
-        const searchText=(l1+'/'+l2+'/'+l3+' '+def).toLowerCase();
-        let score=0;
-        for(const kw of keywords){
-          const kl=kw.toLowerCase();
-          if(kl.length>=2&&searchText.includes(kl))score+=kl.length*2;
-          if(kl.length>=2&&l3.toLowerCase().includes(kl))score+=8;
-          if(kl.length>=2&&l2.toLowerCase().includes(kl))score+=4;
+      const kws=item.split('/').map(s=>s.trim()).filter(s=>s.length>=2&&!/^\d+$/.test(s));
+      if(kws.length===0){results.push({item,count,matched:false,standardDef:'',matchPath:'',score:0});continue;}
+      let best=null;let bestScore=0;let bestHit=null;
+      const itemN=NORM(item);
+      for(const st of stds){
+        // 精确路径命中(拦截项整体=标准表一/二/三级)
+        if(st.l3&&(itemN===st.l3N||itemN===NORM(st.l2+'/'+st.l3)||itemN===NORM(st.l1+'/'+st.l2+'/'+st.l3))){best={path:st.l1+' → '+st.l2+' → '+st.l3,def:st.def||'(无标准定义)'};bestScore=1000;break;}
+        let score=0,l3Hit=0,l2Hit=0,defHit=0,aggHit=0,kwHit=0,strongNgram=false;
+        for(const kw0 of kws){
+          let kwBest=0,bh=[0,0,0,0];
+          for(const kw of expandKw(kw0)){
+            const kl=NORM(kw);if(kl.length<2)continue;
+            let s=0,h=[0,0,0,0];
+            if(st.text.includes(kl)){
+              s=kl.length*2;
+              if(st.l3N.includes(kl)){s+=8;h[0]++;}
+              if(st.l2N.includes(kl)){s+=4;h[1]++;}
+              if(st.defN.includes(kl)){s+=2;h[2]++;}
+              if(st.aggN.includes(kl)){s+=2;h[3]++;}
+            }else{
+              const c=ngramCov(kl,st.text);
+              if((kl.length>=6&&c>=0.4)||(kl.length>=3&&c>=0.5)){
+                s=Math.round(kl.length*2*c);
+                const ng=[];for(let i=0;i+1<kl.length;i++)ng.push(kl.slice(i,i+2));
+                if(ng.some(g=>st.l3N.includes(g))){s+=8;h[0]++;}
+                if(ng.some(g=>st.l2N.includes(g))){s+=4;h[1]++;}
+                if(ng.some(g=>st.defN.includes(g))){s+=2;h[2]++;}
+                if(ng.some(g=>st.aggN.includes(g))){s+=2;h[3]++;}
+                if(kl.length>=6)strongNgram=true;
+              }
+            }
+            if(s>kwBest){kwBest=s;bh=h;}
+          }
+          if(kwBest>0){score+=kwBest;l3Hit+=bh[0];l2Hit+=bh[1];defHit+=bh[2];aggHit+=bh[3];kwHit++;}
         }
-        if(score>bestScore){bestScore=score;bestMatch={path:l1+' → '+l2+' → '+l3,def:def||'(无标准定义)',score};}
+        if(score>bestScore){bestScore=score;best={path:st.l1+' → '+st.l2+' → '+st.l3,def:st.def||'(无标准定义)'};bestHit={l3Hit,l2Hit,defHit,aggHit,kwHit,strongNgram};}
       }
-      results.push({item,count,matched:bestScore>=6,standardDef:(bestMatch&&bestMatch.def)||'',matchPath:(bestMatch&&bestMatch.path)||'',score:bestScore});
+      const matched=bestScore>=1000||(bestHit&&((bestHit.l3Hit>0&&bestScore>=10)||(bestHit.l2Hit>0&&bestScore>=10)||(bestHit.kwHit>=2&&bestScore>=10)||(bestHit.strongNgram&&bestScore>=10)||((bestHit.defHit>0||bestHit.aggHit>0)&&bestScore>=6)));
+      results.push({item,count,matched,standardDef:(best&&best.def)||'',matchPath:(best&&best.path)||'',score:bestScore});
     }
     results.sort((a,b)=>b.count-a.count);
     this.matchResults=results;
