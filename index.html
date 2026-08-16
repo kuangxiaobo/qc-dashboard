@@ -491,7 +491,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
       <span>📋 数据明细</span>
       <span class="flex items-center gap-3">
         <span class="text-xs text-gray-400" x-text="filteredRecords.length>0?'共 '+filteredRecords.length+' 条'+(filterWarehouse||filterCategory||filterMerchant||filterItems.length?' (已筛选)':''):'等待同步'"></span>
-        <button type="button" title="导出当前筛选结果(全部行数)" @click="exportDetail()" x-show="filteredRecords.length>0" class="text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出</button>
+        <button type="button" title="导出当前筛选结果(全部行数)" @click="exportDetail()" x-show="filteredRecords.length>0" class="export-detail-btn text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出</button>
       </span>
     </div>
     <!-- 空状态 -->
@@ -547,9 +547,12 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
   <div x-show="(interceptData.records||[]).length>0" class="card mb-4">
     <div class="card-header">
       <span>🔍 标准匹配分析</span>
-      <span x-show="matchResults.length>0" class="text-xs text-gray-400 font-normal">
-        匹配 <b class="text-green-600" x-text="matchResults.filter(r=>r.matched).length"></b> /
-        共 <b x-text="matchResults.length"></b> 项
+      <span class="flex items-center gap-3">
+        <span x-show="matchResults.length>0" class="text-xs text-gray-400 font-normal">
+          匹配 <b class="text-green-600" x-text="matchResults.filter(r=>r.matched).length"></b> /
+          共 <b x-text="matchResults.length"></b> 项
+        </span>
+        <button type="button" title="只导出未匹配的拦截项" @click="exportUnmatched()" x-show="matchResults.some(r=>!r.matched)" class="export-unmatched-btn text-xs bg-blue-500 hover:bg-blue-600 text-white rounded px-2.5 py-1">📥 导出未匹配</button>
       </span>
     </div>
     <div class="p-4">
@@ -867,6 +870,7 @@ function app(){return{
   pickFilterItem(name){this.addFilterItem(name);},
   itemInputBlur(){const self=this;setTimeout(()=>{self.itemInput='';},150);},
   exportDetail(){const recs=this.filteredRecords||[];if(!recs.length)return this.toastMsg('当前没有可导出的数据');const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['质检码','日期','类型','商家站点','中心仓','品类','品牌','机型','拦截','拦截项']];recs.forEach(r=>cols.push([r['质检码'],r['日期'],r['类型'],r['商家'],r['仓库'],r['品类'],r['品牌'],r['机型'],r['拦截'],r['拦截项']||'-']));const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='拦截数据明细_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+recs.length+' 条记录: '+fname);},
+  exportUnmatched(){const rows=this.matchResults.filter(r=>!r.matched);if(!rows.length)return this.toastMsg('没有未匹配的拦截项');const esc=v=>{v=v==null?'':String(v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};const cols=[['序号','拦截项','出现次数','最接近标准','匹配得分']];rows.forEach((r,i)=>cols.push([i+1,r.item,r.count,r.matchPath||'-',r.score]));const csv=String.fromCharCode(65279)+cols.map(row=>row.map(esc).join(',')).join('\r\n');const d=new Date();const fname='未匹配拦截项_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.csv';const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(a.href),1000);this.toastMsg('✅ 已导出 '+rows.length+' 条未匹配拦截项: '+fname);},
 
   // 基于当前筛选条件的统计（跟随筛选联动，筛选变化时重新计算一次）
   updateFilterStats(){
@@ -914,7 +918,7 @@ function app(){return{
     records.forEach(r=>{const c=r['品类']||'';if(c&&c!=='-')cats.add(c);});
     if(cats.size===0)cats.add(this.category);
     const allFlatItems=[];
-    const catMap={'手机':'手机','平板':'平板','笔记本':'笔记本','手表':'手表','耳机':'耳机','智能手表':'手表','笔记本配件':'笔记本'};
+    const catMap={'手机':'手机','平板':'平板','平板电脑':'平板','笔记本':'笔记本','笔记本配件':'笔记本','手表':'手表','智能手表':'手表','耳机':'耳机','耳机/耳麦':'耳机'};
     const loaded=new Set();
     for(const rawCat of cats){
       const mapped=catMap[rawCat]||rawCat;
