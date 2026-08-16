@@ -255,7 +255,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
                 <span class="text-xs text-gray-400" x-text="'('+l2.items.length+'条)'"></span>
               </div>
               <!-- 三级项列表 -->
-              <template x-for="item in l2.items" :key="item._id">
+              <template x-for="(item,i) in l2.items" :key="i">
                 <div class="px-5 py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50/30 transition-colors">
                   <!-- 第一行：三级项名称 + 成色等级 -->
                   <div class="flex items-center gap-2 mb-2">
@@ -349,12 +349,8 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
             <option :value="m.name" x-text="m.name+' ('+m.total+')'"></option>
           </template>
         </select>
-        <select x-model="filterItem" x-show="(interceptData.records||[]).length>0" class="input text-xs" style="width:auto;max-width:420px;padding:4px 8px">
-          <option value="">🔎 全部拦截项</option>
-          <template x-for="it in itemStats" :key="it.name">
-            <option :value="it.name" x-text="it.name+' ('+it.total+')'"></option>
-          </template>
-        </select>
+        <input type="text" list="interceptItemList" x-model="filterItem" x-show="(interceptData.records||[]).length>0" placeholder="🔎 输入拦截项关键词搜索" class="input text-xs" style="width:220px;padding:4px 8px">
+        <datalist id="interceptItemList"></datalist>
         <button @click="filterWarehouse='';filterCategory='';filterMerchant='';filterItem=''" x-show="filterWarehouse||filterCategory||filterMerchant||filterItem" class="text-xs text-blue-500 hover:underline">✕ 清除</button>
         <span x-show="(interceptData.records||[]).length>0" class="text-xs text-gray-400" x-text="'匹配 '+filteredRecords.length+' 条'"></span>
         <button @click="clearInterceptData()" class="btn btn-danger btn-sm" x-show="(interceptData.records||[]).length>0" style="margin-left:auto">清空</button>
@@ -622,24 +618,24 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
   </div>
 
   <!-- 分析报告内容 -->
-  <div x-if="analysisData" class="space-y-4 animate-in">
+  <div x-show="analysisData" class="space-y-4 animate-in">
 
     <!-- 概览卡片 -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div class="card card-dashed stat-card">
-        <div class="stat-value text-gray-800" x-text="analysisData.summary.total"></div>
+        <div class="stat-value text-gray-800" x-text="(analysisData?.summary||{}).total"></div>
         <div class="stat-label">检验总量</div>
       </div>
       <div class="card card-dashed stat-card">
-        <div class="stat-value text-red-500" x-text="analysisData.summary.intercepted"></div>
+        <div class="stat-value text-red-500" x-text="(analysisData?.summary||{}).intercepted"></div>
         <div class="stat-label">实际拦截</div>
       </div>
       <div class="card card-dashed stat-card">
-        <div class="stat-value text-amber-500" x-text="analysisData.summary.rate+'%'"></div>
+        <div class="stat-value text-amber-500" x-text="((analysisData?.summary||{}).rate||0)+'%'"></div>
         <div class="stat-label">拦截率</div>
       </div>
       <div class="card card-dashed stat-card">
-        <div class="stat-value text-blue-500" x-text="analysisData.summary.uniqueItems"></div>
+        <div class="stat-value text-blue-500" x-text="(analysisData?.summary||{}).uniqueItems"></div>
         <div class="stat-label">拦截项种类</div>
       </div>
     </div>
@@ -655,7 +651,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
         </div>
         <div class="p-4">
           <div class="space-y-3">
-            <template x-for="d in analysisData.dimensions.slice(0,10)" :key="d.name">
+            <template x-for="d in (analysisData?.dimensions||[]).slice(0,10)" :key="d.name">
               <div>
                 <div class="flex items-center justify-between text-sm mb-1">
                   <span class="text-gray-700 truncate" x-text="d.name"></span>
@@ -679,7 +675,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
         </div>
         <div class="p-4">
           <div class="space-y-2">
-            <template x-for="(item,i) in analysisData.topItems.slice(0,15)" :key="item.name">
+            <template x-for="(item,i) in (analysisData?.topItems||[]).slice(0,15)" :key="item.name">
               <div class="flex items-center gap-2 text-sm">
                 <span class="rank-badge" :class="i===0?'rank-1':i<3?'rank-2':'rank-other'" x-text="i+1"></span>
                 <span class="flex-1 truncate text-gray-700" x-text="item.name"></span>
@@ -709,7 +705,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
             </tr>
           </thead>
           <tbody>
-            <template x-for="b in analysisData.brands.slice(0,12)" :key="b.name">
+            <template x-for="b in (analysisData?.brands||[]).slice(0,12)" :key="b.name">
               <tr>
                 <td class="font-medium" x-text="b.name"></td>
                 <td class="text-right font-bold" x-text="b.total"></td>
@@ -731,7 +727,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
     <div class="card border-t-4 border-t-blue-500" style="border-top-style:dashed">
       <div class="card-header">
         <span>🏭 竞品标准对标 · 数据关联分析</span>
-        <span class="text-xs text-blue-500 font-normal" x-text="'基于当前 '+analysisData.summary.total+' 条拦截数据'"></span>
+        <span class="text-xs text-blue-500 font-normal" x-text="'基于当前 '+((analysisData?.summary||{}).total||0)+' 条拦截数据'"></span>
       </div>
       <div class="overflow-x-auto" style="-webkit-overflow-scrolling:touch">
         <table class="data-table text-xs" style="min-width:900px">
@@ -747,7 +743,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
             </tr>
           </thead>
           <tbody>
-            <template x-for="b in analysisData.benchmarks" :key="b.dim">
+            <template x-for="b in (analysisData?.benchmarks||[])" :key="b.dim">
               <tr :class="b.gap==='严重'?'bg-red-50':b.gap==='较大'?'bg-amber-50':''">
                 <td class="font-semibold text-gray-800" x-text="b.dim"></td>
                 <td class="text-right font-bold" :class="b.pct>=20?'text-red-500':b.pct>=10?'text-amber-500':'text-gray-600'" x-text="b.count"></td>
@@ -772,10 +768,10 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
     <div class="card border-l-4 border-l-amber-500" style="border-left-style:dashed">
       <div class="card-header">
         <span>💡 标准优化建议（根据当前数据动态生成）</span>
-        <span class="text-xs text-amber-500 font-normal" x-text="analysisData.recommendations.length+'条建议'"></span>
+        <span class="text-xs text-amber-500 font-normal" x-text="(analysisData?.recommendations||[]).length+'条建议'"></span>
       </div>
       <div class="p-4 space-y-4">
-        <template x-for="(rec,i) in analysisData.recommendations" :key="i">
+        <template x-for="(rec,i) in (analysisData?.recommendations||[])" :key="i">
           <div class="flex gap-3 p-4 rounded-lg border"
             :class="rec.level==='critical'?'bg-red-50 border-red-200':rec.level==='high'?'bg-orange-50 border-orange-200':rec.level==='medium'?'bg-yellow-50 border-yellow-200':'bg-blue-50 border-blue-200'">
             <span class="text-2xl flex-shrink-0" x-text="rec.icon"></span>
@@ -804,7 +800,7 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
       <div class="px-4 py-3 bg-amber-50 border-t border-amber-200">
         <div class="flex items-start gap-2 text-xs text-amber-700">
           <span>📋</span>
-          <span x-text="analysisData.summaryNote||'以上建议基于当前拦截数据的高频维度自动生成，不同附件（数据集）会产生不同的分析结果。'"></span>
+          <span x-text="(analysisData||{}).summaryNote||'以上建议基于当前拦截数据的高频维度自动生成，不同附件（数据集）会产生不同的分析结果。'"></span>
         </div>
       </div>
     </div>
@@ -839,7 +835,7 @@ function app(){return{
   matchResults:[],matchLoading:false,
   isStatic:false,analysisData:null,warehouseStats:[],categoryStats:[],merchantStats:[],itemStats:[],filterStats:{warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0},
 
-  get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouse&&!this.filterCategory&&!this.filterMerchant&&!this.filterItem)return r;return r.filter(x=>(!this.filterWarehouse||x['仓库']===this.filterWarehouse)&&(!this.filterCategory||x['品类']===this.filterCategory)&&(!this.filterMerchant||x['商家']===this.filterMerchant)&&(!this.filterItem||(x['拦截项']||'').trim()===this.filterItem));},
+  get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouse&&!this.filterCategory&&!this.filterMerchant&&!this.filterItem)return r;const kw=this.filterItem.trim().toLowerCase();return r.filter(x=>(!this.filterWarehouse||x['仓库']===this.filterWarehouse)&&(!this.filterCategory||x['品类']===this.filterCategory)&&(!this.filterMerchant||x['商家']===this.filterMerchant)&&(!kw||(x['拦截项']||'').toLowerCase().includes(kw)));},
 
   // 基于当前筛选条件的统计（跟随筛选联动，筛选变化时重新计算一次）
   updateFilterStats(){
@@ -866,7 +862,7 @@ function app(){return{
   switchView(v){this.view=v;if(v==='analysis'&&(this.interceptData.records||[]).length&&!this.analysisData)this.runAnalysis();},
   // 检测是否为纯静态部署(GitHub Pages等,无后端API):探测/api/interception是否可用
   async detectStatic(){try{const r=await fetch('/api/interception');this.isStatic=!(r&&r.ok);}catch(e){this.isStatic=true;}if(this.isStatic)console.log('📦 静态部署模式:数据从 data/*.json 直读');},
-  async init(){this.$watch('filterWarehouse',()=>this.onFilterChange());this.$watch('filterCategory',()=>this.onFilterChange());this.$watch('filterMerchant',()=>this.onFilterChange());this.$watch('filterItem',()=>this.onFilterChange());await this.detectStatic();await Promise.all([this.loadStandards(),this.loadInterceptData()]);},
+  async init(){this.$watch('filterWarehouse',()=>this.onFilterChange());this.$watch('filterCategory',()=>this.onFilterChange());this.$watch('filterMerchant',()=>this.onFilterChange());this.$watch('filterItem',()=>{clearTimeout(this._itemDebounce);this._itemDebounce=setTimeout(()=>this.onFilterChange(),300);});await this.detectStatic();await Promise.all([this.loadStandards(),this.loadInterceptData()]);},
 
   async loadInterceptData(){try{const r=await fetch(this.isStatic?'data/interception.json':'/api/interception');if(r.ok)this.interceptData=await r.json();this.lastUpdate=this.interceptData.updated||'-';}catch(e){console.error('loadInterceptData:',e.message);this.statusMsg='⚠️ 加载拦截数据失败: '+e.message;}this.interceptData.summary=this.interceptData.summary||{total:0};this.interceptData.topItems=this.interceptData.topItems||[];this.interceptData.records=this.interceptData.records||[];this.computeWarehouseStats();this.updateFilterStats();},
 
@@ -876,7 +872,7 @@ function app(){return{
   doSearch(){if(!this.standards)return;const sq=this.search.toLowerCase();const l1f=this.level1Filter;this.filteredGroups=this.standards.groups.filter(g=>!l1f||g.name===l1f).map(g=>{const fg=g.groups.map(l2=>{const items=l2.items.filter(item=>{if(!sq)return true;return JSON.stringify(item).toLowerCase().includes(sq);});return{...l2,items};}).filter(l2=>l2.items.length>0);return{...g,open:true,filteredGroups:fg,count:fg.reduce((s,l2)=>s+l2.items.length,0)};}).filter(g=>g.count>0);this.filteredCount=this.filteredGroups.reduce((s,g)=>s+g.count,0);},
   highlight(text){if(!this.search||!text)return text;const re=new RegExp('('+this.search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');return text.replace(re,'<mark class="bg-yellow-200 rounded px-0.5">$1</mark>');},
 
-  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouse='';this.filterCategory='';this.filterMerchant='';this.filterItem='';if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
+  clearInterceptData(){this.interceptData={records:[],summary:{total:0},topItems:[]};this.matchResults=[];this.analysisData=null;this.warehouseStats=[];this.categoryStats=[];this.merchantStats=[];this.itemStats=[];this.refreshItemDatalist();this.filterStats={warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0};this.filterWarehouse='';this.filterCategory='';this.filterMerchant='';this.filterItem='';if(!this.isStatic)fetch('/api/interception',{method:'DELETE'});this.toastMsg('已清空拦截数据及分析报告');},
   async syncFromQuickBI(){if(this.isStatic)return this.toastMsg('📦 当前为静态站点:数据由管理员同步更新,如需最新数据请联系管理员');this.syncing=true;const range=this.syncDateStart+' ~ '+this.syncDateEnd;this.toastMsg('正在同步 '+range+' 的拦截数据...');try{const r=await fetch('/api/fetch-interception?dateStart='+this.syncDateStart+'&dateEnd='+this.syncDateEnd);const result=await r.json();if(result.ok){await this.loadInterceptData();this.toastMsg('✅ 同步完成：'+result.data.summary.total+' 条记录');if(this.interceptData.records.length>0&&typeof this.runAnalysis==='function'){setTimeout(()=>this.runAnalysis(),500);}}else{this.toastMsg('❌ 同步失败: '+(result.error||'未知错误'));}}catch(e){this.toastMsg('❌ 请求失败: '+e.message);}this.syncing=false;},
 
   async runStandardMatch(){
@@ -1090,7 +1086,8 @@ this.analysisData.summaryNote=this._buildSummaryNote(total,dimensions.length);
 this.toastMsg('报告生成完成！'+total+'条数据，'+dimensions.length+'个维度，'+this.analysisData.recommendations.length+'条建议');
   },
 
-  computeWarehouseStats(){const wh={},cats={},mer={},items={};this.interceptData.records.forEach(r=>{const w=r['仓库']||'未知';if(!wh[w])wh[w]={total:0,intercepted:0};wh[w].total++;if(r['拦截']==='是')wh[w].intercepted++;const c=r['品类']||'未知';if(!cats[c])cats[c]={total:0,intercepted:0};cats[c].total++;if(r['拦截']==='是')cats[c].intercepted++;const m=r['商家']||'未知';if(!mer[m])mer[m]={total:0,intercepted:0};mer[m].total++;if(r['拦截']==='是')mer[m].intercepted++;const it=(r['拦截项']||'').trim();if(it&&it!=='-')items[it]=(items[it]||0)+1;});const fmt=a=>Object.entries(a).sort((a,b)=>b[1].total-a[1].total).map(([name,d])=>({name,total:d.total,intercepted:d.intercepted,passed:d.total-d.intercepted,rate:Math.round(d.intercepted/d.total*100)}));this.warehouseStats=fmt(wh);this.categoryStats=fmt(cats);this.merchantStats=fmt(mer);this.itemStats=Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([name,total])=>({name,total}));},
+  computeWarehouseStats(){const wh={},cats={},mer={},items={};this.interceptData.records.forEach(r=>{const w=r['仓库']||'未知';if(!wh[w])wh[w]={total:0,intercepted:0};wh[w].total++;if(r['拦截']==='是')wh[w].intercepted++;const c=r['品类']||'未知';if(!cats[c])cats[c]={total:0,intercepted:0};cats[c].total++;if(r['拦截']==='是')cats[c].intercepted++;const m=r['商家']||'未知';if(!mer[m])mer[m]={total:0,intercepted:0};mer[m].total++;if(r['拦截']==='是')mer[m].intercepted++;const it=(r['拦截项']||'').trim();if(it&&it!=='-')items[it]=(items[it]||0)+1;});const fmt=a=>Object.entries(a).sort((a,b)=>b[1].total-a[1].total).map(([name,d])=>({name,total:d.total,intercepted:d.intercepted,passed:d.total-d.intercepted,rate:Math.round(d.intercepted/d.total*100)}));this.warehouseStats=fmt(wh);this.categoryStats=fmt(cats);this.merchantStats=fmt(mer);this.itemStats=Object.entries(items).sort((a,b)=>b[1]-a[1]).map(([name,total])=>({name,total}));this.refreshItemDatalist();},
+  refreshItemDatalist(){const dl=document.getElementById('interceptItemList');if(!dl)return;dl.innerHTML='';this.itemStats.forEach(it=>{const o=document.createElement('option');o.value=it.name;dl.appendChild(o);});},
   toastMsg(msg){this.toast=msg;setTimeout(()=>this.toast='',2500);}
 }};
 </script>
