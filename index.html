@@ -459,6 +459,11 @@ tailwind.config={theme:{extend:{colors:{brand:{50:'#eff6ff',100:'#dbeafe',500:'#
       <div class="stat-label">拦截项种类</div>
     </div>
   </div>
+  <!-- 数据日期范围(跟随筛选) -->
+  <div x-show="(interceptData.records||[]).length>0" class="daterange-line text-xs text-gray-500 -mt-2 mb-4">
+    📅 数据日期:<b class="text-gray-700" x-text="dateRangeText"></b>
+    <span class="text-gray-400" x-show="filterWarehouses.length||filterCats.length||filterMerchants.length||filterItems.length">(按当前筛选)</span>
+  </div>
 
   <!-- 仓库 / 品类 / 商家 概览（跟随筛选） -->
   <div x-show="(interceptData.records||[]).length>0" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
@@ -924,6 +929,8 @@ function app(){return{
   isStatic:false,analysisData:null,warehouseStats:[],categoryStats:[],merchantStats:[],itemStats:[],filterStats:{warehouseStats:[],categoryStats:[],merchantStats:[],topItems:[],total:0,intercepted:0,uniqueItems:0},
 
   get filteredRecords(){const r=this.interceptData.records||[];if(!this.filterWarehouses.length&&!this.filterCats.length&&!this.filterMerchants.length&&!this.filterItems.length)return r;const whs=this.filterWarehouses,cats=this.filterCats,mers=this.filterMerchants,kws=this.filterItems.map(k=>k.trim().toLowerCase()).filter(Boolean);return r.filter(x=>(!whs.length||whs.some(w=>x['仓库']===w))&&(!cats.length||cats.some(c=>x['品类']===c))&&(!mers.length||mers.some(m=>x['商家']===m))&&(!kws.length||kws.some(kw=>(x['拦截项']||'').toLowerCase().includes(kw))));},
+  // 当前筛选数据的日期范围(取记录里日期的 min~max,跟随筛选变化;日期可能是 20260815 或 2026-08-15 格式,统一按数字归一)
+  get dateRangeText(){const norm=d=>String(d||'').replace(/\D/g,'').slice(0,8);const ds=this.filteredRecords.map(r=>norm(r['日期'])).filter(d=>/^\d{8}$/.test(d));if(!ds.length)return '-';let min=ds[0],max=ds[0];ds.forEach(d=>{if(d<min)min=d;if(d>max)max=d;});const fmt=d=>d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8);const days=Math.round((new Date(fmt(max))-new Date(fmt(min)))/86400000)+1;return min===max?fmt(min)+'('+days+'天)':fmt(min)+' ~ '+fmt(max)+'('+days+'天)';},
   get itemSuggestions(){const kw=(this.itemInput||'').trim().toLowerCase();const sel=new Set(this.filterItems.map(k=>k.trim().toLowerCase()));const src=(this.itemStats||[]).filter(it=>!sel.has(it.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(it=>it.name.toLowerCase().includes(kw)).slice(0,30);},
   get warehouseSuggestions(){const kw=(this.whInput||'').trim().toLowerCase();const sel=new Set(this.filterWarehouses.map(k=>k.trim().toLowerCase()));const src=(this.warehouseStats||[]).filter(w=>!sel.has(w.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(w=>w.name.toLowerCase().includes(kw)).slice(0,30);},
   get categorySuggestions(){const kw=(this.catInput||'').trim().toLowerCase();const sel=new Set(this.filterCats.map(k=>k.trim().toLowerCase()));const src=(this.categoryStats||[]).filter(c=>!sel.has(c.name.toLowerCase()));if(!kw)return src.slice(0,30);return src.filter(c=>c.name.toLowerCase().includes(kw)).slice(0,30);},
