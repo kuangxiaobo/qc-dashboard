@@ -6,6 +6,8 @@
 //       node tools/daily-report-cloud.js --send --scheduled  定时触发：北京 18:30-24:00 之外跳过（防队列极端延迟凌晨播空数据）
 //       node tools/daily-report-cloud.js --send --day=2026-09-12  补播指定日期
 const { feishu } = require('./feishu');
+const fs = require('fs');
+const path = require('path');
 
 const APP = 'XyAKwKKicinviXknZc5cdHyrnjb';
 // 按北京月份自动选择「N月登记汇总」表
@@ -88,6 +90,15 @@ function buildCard(reportDay, persons) {
   // --day=YYYY-MM-DD 指定播报日期（默认今天）
   const dayArg = process.argv.find(a => a.startsWith('--day='));
   const reportDay = dayArg ? dayArg.split('=')[1] : BJS();
+
+  // 当日已播报过则跳过（skip-days.txt 一行一天；仅 --scheduled 生效，手动 --send / workflow_dispatch 不受限）
+  if (process.argv.includes('--scheduled') && process.argv.includes('--send')) {
+    const skipPath = path.join(__dirname, 'skip-days.txt');
+    if (fs.existsSync(skipPath) && fs.readFileSync(skipPath, 'utf8').split(/\r?\n/).map(s => s.trim()).includes(reportDay)) {
+      console.log(reportDay + ' 在 skip-days.txt 中（当天已播报过），跳过发送');
+      return;
+    }
+  }
 
   // 1. 拉取最新数据（翻页只保留「当天+三人」防全表堆内存 OOM，同 daily-report.js）
   const useTable = MONTH_TABLES[reportDay.slice(0, 7)];
