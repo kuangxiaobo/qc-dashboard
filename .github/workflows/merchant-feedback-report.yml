@@ -19,7 +19,6 @@ jobs:
         env:
           FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
           FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
-          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
           FEISHU_HOOK: ${{ secrets.FEISHU_HOOK }}
           TZ: Asia/Shanghai
         run: |

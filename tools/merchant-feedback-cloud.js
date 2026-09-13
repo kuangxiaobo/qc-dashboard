@@ -1,7 +1,7 @@
 // 云端版「商户不认可反馈」每日播报（2026-09-13 上线：GitHub Actions 每天 01:20 UTC = 北京 09:20）
 // 与 phone-inspection-app/merchant-feedback-report.js 输出同款飞书交互卡片（统计摘要 + 今日/昨日明细 table）
 // 云端差异：无 Excel/无 Edge 图片/无免密文件链接（报表图片链接可用 FEISHU_REPORT_IMG 环境变量自行提供）
-// 密钥全部来自环境变量：FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_CHAT_ID（群 chat_id）/ FEISHU_HOOK（webhook 兜底）
+// 密钥全部来自环境变量：FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_HOOK（群 webhook，与质检差异播报同一个机器人）
 // 用法: node tools/merchant-feedback-cloud.js [--day=YYYY-MM-DD] [--send] [--scheduled]
 const { feishu } = require('./feishu');
 
@@ -90,19 +90,11 @@ function buildCard(today, yday, sT, sY, tRows, yRows) {
   };
 }
 
-// ===== 发送 =====
-async function sendMsg(chatId, msgType, content) {
-  return feishu(`/open-apis/im/v1/messages?receive_id_type=chat_id`, {
-    method: 'POST',
-    body: { receive_id: chatId, msg_type: msgType, content: JSON.stringify(content) },
-  });
-}
-
 // ===== 主流程 =====
 (async () => {
-  if (process.argv.includes('--send')) {
-    if (!process.env.FEISHU_CHAT_ID) { console.error('缺少 FEISHU_CHAT_ID 环境变量（群 chat_id）'); process.exit(1); }
-    if (!process.env.FEISHU_HOOK) { console.error('缺少 FEISHU_HOOK 环境变量（webhook 兜底）'); process.exit(1); }
+  if (process.argv.includes('--send') && !process.env.FEISHU_HOOK && !process.env.DAILY_TEST_HOOK) {
+    console.error('缺少 FEISHU_HOOK 环境变量（发送目标群 webhook）');
+    process.exit(1);
   }
   // 定时触发时段防护：北京 08:30-13:00 之外跳过（09:20 播报，极端延迟到下午/晚上时避免突兀打扰）
   if (process.argv.includes('--scheduled') && process.argv.includes('--send')) {
@@ -128,20 +120,16 @@ async function sendMsg(chatId, msgType, content) {
   console.log(`明细: 今日 ${tRows.length} 单 / 昨日 ${yRows.length} 单`);
 
   if (process.argv.includes('--send')) {
+    // 与质检差异播报共用一个群 webhook 机器人（同一个发送身份），不再走应用机器人
+    const hook = process.env.DAILY_TEST_HOOK || process.env.FEISHU_HOOK;
     const card = buildCard(today, yday, sT, sY, tRows, yRows);
-    try {
-      await sendMsg(process.env.FEISHU_CHAT_ID, 'interactive', card);
-      console.log('已发送明细表格卡片到群「天命牛马」');
-    } catch (e) {
-      console.error('机器人卡片发送失败，webhook 兜底:', e.message);
-      const res = await fetch(process.env.FEISHU_HOOK, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ msg_type: 'interactive', card }),
-      });
-      const data = await res.json();
-      if (data.code !== 0) { console.error('webhook 兜底也失败:', JSON.stringify(data)); process.exit(1); }
-      console.log('已用 webhook 兜底发送卡片');
-    }
+    const res = await fetch(hook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ msg_type: 'interactive', card }),
+    });
+    const data = await res.json();
+    if (data.code !== 0) { console.error('webhook 发送失败:', JSON.stringify(data)); process.exitCode = 1; return; }
+    console.log('已发送明细表格卡片到群（webhook 机器人）');
   }
 })().catch(e => { console.error('ERR:', e.message); process.exit(1); });
