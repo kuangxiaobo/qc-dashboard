@@ -1,0 +1,30 @@
+name: 商户不认可反馈每日播报
+
+on:
+  schedule:
+    # 每天 01:20 UTC = 北京 09:20
+    - cron: '20 1 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 播报
+        env:
+          FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+          FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+          FEISHU_CHAT_ID: ${{ secrets.FEISHU_CHAT_ID }}
+          FEISHU_HOOK: ${{ secrets.FEISHU_HOOK }}
+          TZ: Asia/Shanghai
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            node tools/merchant-feedback-cloud.js --send --scheduled
+          else
+            node tools/merchant-feedback-cloud.js --send
+          fi
