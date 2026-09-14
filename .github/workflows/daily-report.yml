@@ -2,8 +2,8 @@ name: 质检差异率每日播报
 
 on:
   schedule:
-    # 每天 11:00 UTC = 北京 19:00
-    - cron: '0 11 * * *'
+    # 每天 11:02 UTC = 北京 19:02（避开整点：GitHub 整点任务易延迟/被丢弃）
+    - cron: '2 11 * * *'
   workflow_dispatch: {}
 
 jobs:

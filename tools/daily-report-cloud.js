@@ -1,4 +1,4 @@
-// 云端版每日差异率播报（2026-09-13 上线：GitHub Actions 每天 11:00 UTC = 北京 19:00，用户 09-13 要求从 19:05 提前到 19:00）
+// 云端版每日差异率播报（2026-09-13 上线：GitHub Actions 每天 11:02 UTC = 北京 19:02，用户 09-13 要求晚上 7 点播报；避开整点分钟 0 防 GitHub 延迟/丢任务）
 // 与 phone-inspection-app/daily-report.js 输出同款飞书交互卡片（schema 2.0 table 真表格）
 // 云端差异：无 Edge 截图/无本地路径；密钥全部来自环境变量（FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_HOOK）
 // 用法: node tools/daily-report-cloud.js                仅拉数据打印摘要（不发送）
