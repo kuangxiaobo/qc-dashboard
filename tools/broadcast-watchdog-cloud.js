@@ -11,7 +11,6 @@ const TARGETS = {
   merchant: { wf: 'merchant-feedback-report.yml', script: 'merchant-feedback-cloud.js', from: '08:30', to: '13:00' },
 };
 
-const BJS = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
 const bjNow = () => new Date(Date.now() + 8 * 3600 * 1000);
 
 (async () => {
@@ -21,7 +20,9 @@ const bjNow = () => new Date(Date.now() + 8 * 3600 * 1000);
   const t = TARGETS[key];
   console.log('看门狗：检查', t.wf, '（北京', hm, '）');
 
-  // 1. 主工作流今天有没有成功 run
+  // 1. 主工作流近 3 小时内的定时 run 有没有成功的
+  //    只看 event=schedule 且 created_at 在近 3 小时内的（当天早些时候的手动 dispatch run 不算数，
+  //    否则 19:25 看门狗会被早上/中午的 dispatch 骗过而漏补发）
   const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${t.wf}/runs?per_page=10&event=schedule`, {
     headers: {
       Authorization: 'Bearer ' + (process.env.WATCHDOG_TOKEN || ''),
@@ -31,16 +32,17 @@ const bjNow = () => new Date(Date.now() + 8 * 3600 * 1000);
   });
   if (!res.ok) { console.error('查 runs 失败:', res.status); process.exit(1); }
   const data = await res.json();
-  const today = (data.workflow_runs || []).filter(r => r.created_at.slice(0, 10) === BJS());
-  if (today.some(r => r.status === 'completed' && r.conclusion === 'success')) {
-    console.log('今天', t.wf, '已有成功 run（含 skip-days 跳过），无需补发');
+  const since = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+  const recent = (data.workflow_runs || []).filter(r => r.event === 'schedule' && r.created_at >= since);
+  if (recent.some(r => r.status === 'completed' && r.conclusion === 'success')) {
+    console.log('近 3 小时内', t.wf, '已有成功 run（含 skip-days 跳过），无需补发');
     return;
   }
-  if (today.some(r => r.status === 'in_progress' || r.status === 'queued')) {
+  if (recent.some(r => r.status === 'in_progress' || r.status === 'queued')) {
     console.log('主任务仍在运行/排队中，本次不补发（避免重复）');
     return;
   }
-  console.log('今天', t.wf, '没有成功 run，自动补发...');
+  console.log('近 3 小时内', t.wf, '没有成功 run，自动补发...');
 
   // 2. 补发：直接跑对应云端脚本
   execFileSync('node', [path.join(__dirname, t.script), '--send', '--scheduled'], {
