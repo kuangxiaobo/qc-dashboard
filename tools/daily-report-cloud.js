@@ -20,9 +20,9 @@ const MONTH_TABLES = {
   '2026-11': 'tbl13cd3UhoLjhYP',
   '2026-12': 'tblqntPYMgoGRi3a',
 };
-const NAMES = ['旷小波', '尚杰', '谢志亮'];
+const NAMES = ['旷小波', '尚杰', '谢志亮', '黄少博'];
 // 中心仓必须用指定值（不照抄表里原值）
-const CANG = { 旷小波: '合肥库', 谢志亮: '杭州库', 尚杰: '武汉库' };
+const CANG = { 旷小波: '合肥库', 谢志亮: '杭州库', 尚杰: '武汉库', 黄少博: '西安中心仓' };
 const SRC_ORDER = ['邮件推送', '中心仓拦截'];
 const YW_ORDER = ['前置/后验', '入仓质检'];
 // 谢志亮品类常填成品牌名，归并到手机
@@ -100,7 +100,7 @@ function buildCard(reportDay, persons) {
     }
   }
 
-  // 1. 拉取最新数据（翻页只保留「当天+三人」防全表堆内存 OOM，同 daily-report.js）
+  // 1. 拉取最新数据（翻页只保留「当天+四人」防全表堆内存 OOM，同 daily-report.js）
   const useTable = MONTH_TABLES[reportDay.slice(0, 7)];
   if (!useTable) { console.error('未配置 ' + reportDay.slice(0, 7) + ' 的表 ID'); process.exit(1); }
   let items = [], pageToken = null, pageGuard = 0;
