@@ -6,6 +6,7 @@
 //       node tools/daily-report-cloud.js --send --scheduled  定时触发：北京 18:30-24:00 之外跳过（防队列极端延迟凌晨播空数据）
 //       node tools/daily-report-cloud.js --send --day=2026-09-12  补播指定日期
 const { feishu } = require('./feishu');
+const { getMarker, setMarker } = require('./marker');
 const fs = require('fs');
 const path = require('path');
 
@@ -98,6 +99,12 @@ function buildCard(reportDay, persons) {
       console.log(reportDay + ' 在 skip-days.txt 中（当天已播报过），跳过发送');
       return;
     }
+    // 飞书日报表 Z2 标记（本机 19:05 准点兜底或手动补发都会写标记）当天已发过则跳过
+    const sent = await getMarker(feishu, 'daily');
+    if (sent === BJS()) {
+      console.log('当天已播报过（Z2 标记 ' + sent + '），跳过发送');
+      return;
+    }
   }
 
   // 1. 拉取最新数据（翻页只保留「当天+四人」防全表堆内存 OOM，同 daily-report.js）
@@ -140,5 +147,7 @@ function buildCard(reportDay, persons) {
     const data = await res.json();
     if (data.code !== 0) { console.error('发送失败:', JSON.stringify(data)); process.exit(1); }
     console.log(`已发送卡片表格到飞书群（${hook.includes('58b1f75e') ? '测试群' : '正式群'}）`);
+    // 写去重标记（Z2）：之后的本机兜底/云端延迟定时读到标记都会跳过，当天只发一次
+    await setMarker(feishu, 'daily', reportDay);
   }
 })().catch(e => { console.error('ERR:', e.message); process.exit(1); });

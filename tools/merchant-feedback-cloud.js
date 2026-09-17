@@ -4,6 +4,7 @@
 // 密钥全部来自环境变量：FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_HOOK（群 webhook，与质检差异播报同一个机器人）
 // 用法: node tools/merchant-feedback-cloud.js [--day=YYYY-MM-DD] [--send] [--scheduled]
 const { feishu } = require('./feishu');
+const { getMarker, setMarker } = require('./marker');
 
 const SPREADSHEET = 'Xm4NsSKjuh7wBRtWkhDcYY7on9b';
 const SHEET = '36eE7u';
@@ -104,6 +105,12 @@ function buildCard(today, yday, sT, sY, tRows, yRows) {
       console.log('当前北京时刻 ' + hhmm + ' 不在播报时段（08:30-13:00），跳过');
       return;
     }
+    // 当天已播报过则跳过（飞书日报表 Z1 标记；本机 09:20 准点兜底或手动补发都会写标记）
+    const sent = await getMarker(feishu, 'merchant');
+    if (sent === BJS()) {
+      console.log('当天已播报过（Z1 标记 ' + sent + '），跳过发送');
+      return;
+    }
   }
   const dayArg = process.argv.find(a => a.startsWith('--day='));
   const today = dayArg ? dayArg.split('=')[1] : BJS();
@@ -131,5 +138,7 @@ function buildCard(today, yday, sT, sY, tRows, yRows) {
     const data = await res.json();
     if (data.code !== 0) { console.error('webhook 发送失败:', JSON.stringify(data)); process.exitCode = 1; return; }
     console.log('已发送明细表格卡片到群（webhook 机器人）');
+    // 写去重标记（Z1）：之后的本机兜底/云端延迟定时读到标记都会跳过，当天只发一次
+    await setMarker(feishu, 'merchant', today);
   }
 })().catch(e => { console.error('ERR:', e.message); process.exit(1); });
