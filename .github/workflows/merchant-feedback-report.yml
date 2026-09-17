@@ -4,7 +4,12 @@ on:
   schedule:
     # 每天 01:20 UTC = 北京 09:20
     - cron: '20 1 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      scheduled:
+        description: 'Cloudflare 准点触发器置为 true，走定时语义（时段防护+去重标记）；手动补发留空'
+        required: false
+        default: ''
 
 jobs:
   report:
@@ -22,7 +27,7 @@ jobs:
           FEISHU_HOOK: ${{ secrets.FEISHU_HOOK }}
           TZ: Asia/Shanghai
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.scheduled }}" = "true" ]; then
             node tools/merchant-feedback-cloud.js --send --scheduled
           else
             node tools/merchant-feedback-cloud.js --send
