@@ -1,5 +1,5 @@
 // 播报看门狗：对应时段的主播报工作流当天没有成功 run 就自动补发一次（到点必发双保险）
-//   北京 9:40 检查 9:20 商户不认可播报；北京 19:25 检查 19:00 质检差异率播报
+//   北京 9:40 检查 9:20 商户不认可播报；北京 19:43 检查 19:20 质检差异率播报
 //   补发直接跑对应云端脚本（--scheduled 会再过一遍时段防护 + skip-days 双保险）
 // 用法: node tools/broadcast-watchdog-cloud.js
 const { execFileSync } = require('child_process');
@@ -22,7 +22,7 @@ const bjNow = () => new Date(Date.now() + 8 * 3600 * 1000);
 
   // 1. 主工作流近 3 小时内的定时 run 有没有成功的
   //    只看 event=schedule 且 created_at 在近 3 小时内的（当天早些时候的手动 dispatch run 不算数，
-  //    否则 19:25 看门狗会被早上/中午的 dispatch 骗过而漏补发）
+  //    否则 19:43 看门狗会被早上/中午的 dispatch 骗过而漏补发）
   const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/${t.wf}/runs?per_page=10&event=schedule`, {
     headers: {
       Authorization: 'Bearer ' + (process.env.WATCHDOG_TOKEN || ''),
