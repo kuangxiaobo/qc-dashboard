@@ -1,5 +1,5 @@
 // 播报看门狗：对应时段的主播报工作流当天没有成功 run 就自动补发一次（到点必发双保险）
-//   北京 9:40 检查 9:20 商户不认可播报；北京 19:43 检查 19:20 质检差异率播报
+//   北京 9:40 检查 9:20 商户不认可播报；北京 19:38 检查 19:15 质检差异率播报
 //   补发直接跑对应云端脚本（--scheduled 会再过一遍时段防护 + skip-days 双保险）
 // 用法: node tools/broadcast-watchdog-cloud.js
 const { execFileSync } = require('child_process');

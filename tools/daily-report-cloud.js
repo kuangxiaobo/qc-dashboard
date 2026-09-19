@@ -1,4 +1,4 @@
-// 云端版每日差异率播报（2026-09-13 上线：GitHub Actions 每天 11:20 UTC = 北京 19:20，用户 09-17 要求晚上 7 点 20 分播报；避开整点分钟 0 防 GitHub 延迟/丢任务）
+// 云端版每日差异率播报（2026-09-13 上线：GitHub Actions 每天 11:15 UTC = 北京 19:15，用户 09-19 要求晚上 7 点 15 分播报；避开整点分钟 0 防 GitHub 延迟/丢任务）
 // 与 phone-inspection-app/daily-report.js 输出同款飞书交互卡片（schema 2.0 table 真表格）
 // 云端差异：无 Edge 截图/无本地路径；密钥全部来自环境变量（FEISHU_APP_ID / FEISHU_APP_SECRET / FEISHU_HOOK）
 // 用法: node tools/daily-report-cloud.js                仅拉数据打印摘要（不发送）
@@ -99,7 +99,7 @@ function buildCard(reportDay, persons) {
       console.log(reportDay + ' 在 skip-days.txt 中（当天已播报过），跳过发送');
       return;
     }
-    // 飞书日报表 Z2 标记（本机 19:20 准点兜底或手动补发都会写标记）当天已发过则跳过
+    // 飞书日报表 Z2 标记（本机 19:15 准点兜底或手动补发都会写标记）当天已发过则跳过
     const sent = await getMarker(feishu, 'daily');
     if (sent === BJS()) {
       console.log('当天已播报过（Z2 标记 ' + sent + '），跳过发送');
